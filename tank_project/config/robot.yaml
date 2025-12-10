@@ -1,0 +1,28 @@
+# Robot Configuration (Turtlebot Burger)
+
+kinematics:
+  wheel_base_m: 0.16 # Distance between wheels
+  wheel_radius_m: 0.033 # Wheel radius
+
+physical:
+  robot_radius_m: 0.09 # Approximation as circle
+
+velocity_limits:
+  max_linear_mps: 0.22 # Max linear velocity (m/s)
+  max_angular_radps: 2.84 # Max angular velocity (rad/s)
+
+acceleration_limits:
+  max_linear_accel: 0.5 # m/s²
+  max_angular_accel: 5.0 # rad/s²
+
+control:
+  # Trajectory following parameters
+  lookahead_distance_m: 0.3
+  k_velocity: 1.0 # Linear velocity gain
+  k_theta: 2.0 # Angular velocity gain
+  waypoint_threshold_m: 0.1 # Distance to consider waypoint reached
+
+ros_bridge:
+  host: "localhost"
+  port: 9090
+  timeout_s: 1.0

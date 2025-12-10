@@ -1,0 +1,29 @@
+# AI Configuration
+
+behavior:
+  # Threat assessment thresholds
+  danger_distance_m: 0.8 # Enemy too close threshold
+  optimal_range_min_m: 1.2 # Min optimal firing range
+  optimal_range_max_m: 3.5 # Max optimal firing range
+
+  # Behavior priorities
+  survival_priority: true # Retreat overrides attack
+
+strategy:
+  # Path planning
+  heuristic: "euclidean" # 'euclidean', 'manhattan', 'diagonal'
+  path_simplify: true # Apply Douglas-Peucker simplification
+  simplify_epsilon_m: 0.05 # Simplification tolerance
+
+  # Path smoothing
+  smooth_path: true
+  smooth_weight_data: 0.5
+  smooth_weight_smooth: 0.3
+
+  # Flanking behavior
+  flank_angle_deg: 90 # Preferred flanking angle
+  cover_preference: 0.8 # Preference for cover (0-1)
+
+decision_rate:
+  # How often to replan (in ticks)
+  replan_interval: 10 # Replan every 10 ticks (~0.33s at 30fps)

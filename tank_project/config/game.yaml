@@ -1,0 +1,19 @@
+# Game Rules Configuration
+
+match:
+  duration_seconds: 180 # 3 minutes
+  tick_rate_fps: 30 # Game loop frequency
+
+cooldowns:
+  human_shot_seconds: 5.0 # Human can shoot every 5 seconds
+  ai_shot_seconds: 3.0 # AI can shoot every 3 seconds
+
+win_conditions:
+  max_hits: 10 # First to 10 hits wins
+  time_limit: true # Game ends when time expires
+  sudden_death: false # Continue after time expires if tied?
+
+shot_mechanics:
+  range_m: 5.0 # Maximum shot range
+  speed_mps: 10.0 # Shot travel speed (for animation)
+  instant_hit: true # Hitscan vs projectile

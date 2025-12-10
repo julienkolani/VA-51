@@ -1,0 +1,35 @@
+# Camera Configuration
+
+realsense:
+  width: 640 # 640x480 = stable 30 FPS, 1280x720 = better quality
+  height: 480
+  fps: 30
+  enable_depth: false
+
+aruco:
+  dictionary: DICT_4X4_50 # ArUco dictionary type
+
+  # Marker IDs and their meanings
+  markers:
+    projected_corners: [0, 1, 2, 3] # Virtual corners for calibration
+    robot_ai: 4 # AI robot marker
+    robot_human: 5 # Human robot marker
+
+  # Physical marker size for scale estimation
+  marker_size_m: 0.10 # 10cm markers
+
+kalman:
+  # Process noise covariance
+  process_noise:
+    position: 0.01
+    velocity: 0.1
+    orientation: 0.01
+    angular_velocity: 0.1
+
+  # Measurement noise covariance
+  measurement_noise:
+    position: 0.05
+    orientation: 0.1
+
+  # Time step (matches game tick rate)
+  dt: 0.0333 # 30 FPS
