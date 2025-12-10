@@ -1,0 +1,12 @@
+# Network Configuration for TurtleBot Controller
+
+websocket:
+  uri: "ws://localhost:8765"
+  reconnect_delay_s: 2.0
+  ping_interval_s: 3.0
+  timeout_s: 10.0
+
+command:
+  frequency_hz: 30
+  k_linear: 6.0      # Linear velocity amplification
+  k_angular: 4.0     # Angular velocity amplification

@@ -1,0 +1,20 @@
+# Robot Physical Limits Configuration
+
+robot:
+  name: "TurtleBot3 Burger"
+  type: "differential_drive"
+
+velocity_limits:
+  max_linear_mps: 0.22 # Maximum linear velocity (m/s)
+  max_angular_radps: 2.84 # Maximum angular velocity (rad/s)
+  min_linear_mps: -0.22
+  min_angular_radps: -2.84
+
+physical:
+  wheel_base_m: 0.16 # Distance between wheels
+  wheel_radius_m: 0.033 # Wheel radius
+  robot_radius_m: 0.09 # Robot approximation as circle
+
+safety:
+  emergency_stop_decel: 5.0 # Deceleration rate for emergency stop (m/s²)
+  min_obstacle_distance_m: 0.1

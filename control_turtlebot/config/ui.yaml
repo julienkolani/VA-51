@@ -1,0 +1,46 @@
+# UI Configuration
+
+window:
+  default_width: 1200
+  default_height: 700
+  title: "TurtleBot Controller"
+  target_fps: 60
+  resizable: true
+
+panels:
+  info_width: 350
+  status_update_interval_s: 3.0
+  margin: 20
+  padding: 15
+
+theme:
+  name: "dark_professional"
+  colors:
+    background: [15, 15, 20]
+    panel: [25, 28, 35]
+    panel_accent: [35, 40, 50]
+    text: [230, 230, 235]
+    text_dim: [150, 150, 160]
+    text_bright: [255, 255, 255]
+    accent: [0, 180, 220]
+    accent_bright: [80, 200, 240]
+    accent_dim: [0, 140, 180]
+    success: [50, 200, 100]
+    warning: [200, 150, 0]
+    error: [200, 50, 50]
+    info: [120, 150, 255]
+    grid: [35, 38, 45]
+
+fonts:
+  title_size: 32
+  subtitle_size: 24
+  normal_size: 20
+  small_size: 16
+  tiny_size: 14
+
+visual:
+  speed_scale: 1000 # pixels per m/s
+  angular_scale: 5 # pixels per rad/s
+  max_distance: 220 # max distance from center (pixels)
+  trail_length: 80 # length of robot trail
+  return_speed: 0.15 # return to center speed
