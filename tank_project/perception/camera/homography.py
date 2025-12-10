@@ -44,7 +44,7 @@ def compute_homography(src_points: np.ndarray,
     # Calculer homographie
     H, _ = cv2.findHomography(src, dst)
     
-    print(f"[HOMOGRAPHY] Computed from {len(src_points)} points")
+    print("[HOMOGRAPHY] Computed from {} points".format(len(src_points)))
     
     return H
 
@@ -169,7 +169,7 @@ def estimate_scale_from_marker(marker_corners_px: List[Tuple[float, float]],
     # Échelle
     scale = real_size_m / avg_size_av
     
-    print(f"[HOMOGRAPHY] Scale estimation: real={real_size_m:.3f}m, "
-          f"av={avg_size_av:.3f} units → scale={scale:.3f} m/unit")
+    print("[HOMOGRAPHY] Scale estimation: real={:.3f}m, "
+          "av={:.3f} units -> scale={:.3f} m/unit".format(real_size_m, avg_size_av, scale))
     
     return scale

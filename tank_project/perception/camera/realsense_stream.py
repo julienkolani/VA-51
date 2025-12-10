@@ -74,10 +74,10 @@ class RealSenseStream:
             # Start pipeline
             self.pipeline.start(self.config)
             
-            print(f"[REALSENSE] Pipeline started: {self.width}x{self.height} @ {self.fps} fps")
+            print("[REALSENSE] Pipeline started: {}x{} @ {} fps".format(self.width, self.height, self.fps))
             
         except Exception as e:
-            print(f"[REALSENSE] Failed to start: {e}")
+            print("[REALSENSE] Failed to start: {}".format(e))
             raise
     
     def stop(self):
@@ -115,7 +115,7 @@ class RealSenseStream:
             return (color_image, depth_image)
             
         except Exception as e:
-            print(f"[REALSENSE] Frame acquisition error: {e}")
+            print("[REALSENSE] Frame acquisition error: {}".format(e))
             return (None, None)
     
     def get_intrinsics(self):

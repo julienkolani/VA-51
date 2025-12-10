@@ -1,162 +1,162 @@
-# 🎮 Tank Arena - Projet de Combat Robotique en Réalité Mixte
+# Tank Arena - Projet de Combat Robotique en Realite Mixte
 
-Système de jeu robotique en temps réel combinant vision par ordinateur, projection augmentée, intelligence artificielle et contrôle ROS. Deux robots physiques (Turtlebot Burger) s'affrontent dans une arène projetée : un robot contrôlé par IA et un robot piloté par un humain.
+Systeme de jeu robotique en temps reel combinant vision par ordinateur, projection augmentee, intelligence artificielle et controle ROS. Deux robots physiques (Turtlebot Burger) s'affrontent dans une arene projetee : un robot controle par IA et un robot pilote par un humain.
 
 ---
 
-## 📐 Vue d'ensemble du système
+## Vue d'ensemble du systeme
 
-### Principe général
+### Principe general
 
-- **Arène physique** : Tapis au sol avec ArUco markers et obstacles
-- **Vision** : Caméra RealSense D435 en vue aérienne
+- **Arene physique** : Tapis au sol avec ArUco markers et obstacles
+- **Vision** : Camera RealSense D435 en vue aerienne
 - **Projection** : Projecteur affichant la zone de jeu, HUD, effets visuels
 - **Robots** : 2x Turtlebot Burger avec marqueurs ArUco
-  - Robot 4 (IA) : Contrôlé par l'algorithme
-  - Robot 5 (Humain) : Contrôlé physiquement par le joueur
+  - Robot 4 (IA) : Controle par l'algorithme
+  - Robot 5 (Humain) : Controle physiquement par le joueur
 - **Communication** : ROS Bridge (WebSocket) pour envoyer commandes au robot IA
 
 ### Pipeline complet
 
 ```
-RealSense Camera → ArUco Detection → Kalman Filtering
-                         ↓
+RealSense Camera -> ArUco Detection -> Kalman Filtering
+                         |
                    World Model (poses + occupancy grid)
-                         ↓
-            ┌────────────┴────────────┐
-            ↓                         ↓
+                         |
+            +-----------+-----------+
+            |                       |
       Game Engine              AI Strategy
     (arbitre, tirs)        (behavior tree, A*)
-            ↓                         ↓
-      Visualization ←──────── ROS Bridge Client
+            |                       |
+      Visualization <-------- ROS Bridge Client
     (Pygame projector)        (commandes robot IA)
 ```
 
 ---
 
-## 🗂️ Architecture du projet
+## Architecture du projet
 
 ```
-tanker_project/
-│
-├── core/                      # Logique métier (indépendante vision/affichage)
-│   ├── game/                  # Arbitre et règles de jeu
-│   │   ├── game_engine.py     # Boucle principale, orchestration
-│   │   ├── state.py           # État complet (robots, score, timer)
-│   │   ├── rules.py           # Règles et paramètres de jeu
-│   │   ├── raycast.py         # Détection collision tirs
-│   │   ├── timers.py          # Cooldowns tirs, timer match
-│   │   └── hits.py            # Gestion impacts
-│   │
-│   ├── ia/                    # Intelligence artificielle
-│   │   ├── behavior_tree.py   # Arbre de comportement modulaire
-│   │   ├── decisions.py       # Conditions tactiques (LOS, distance)
-│   │   ├── strategy.py        # Combiner BT → objectif + fire_request
-│   │   └── planners/          # Path planning
-│   │       ├── a_star.py      # Algorithme A*
-│   │       ├── heuristics.py  # Fonctions heuristiques
-│   │       └── path_utils.py  # Lissage, simplification trajectoires
-│   │
-│   ├── world/                 # Représentation monde 2D métrique
-│   │   ├── world_model.py     # Unification : robots, obstacles, zones
-│   │   ├── occupancy_grid.py  # Grille d'occupation 2D (résolution 2cm)
-│   │   ├── inflation.py       # Dilatation obstacles (sécurité)
-│   │   └── coordinate_frames.py  # Transformations Camera↔World↔Pygame
-│   │
-│   └── control/               # Contrôle bas niveau
-│       ├── trajectory_follower.py  # Suivi waypoints (Pure Pursuit)
-│       ├── kinematics.py      # Modèle cinématique Turtlebot
-│       ├── motion_constraints.py  # Limites vitesse/accélération
-│       └── ros_bridge_client.py   # Client WebSocket → ROS
-│
-├── perception/                # Vision et calibration
-│   ├── camera/
-│   │   ├── realsense_stream.py    # Interface RealSense D435
-│   │   ├── aruco_detector.py      # Détection markers ArUco
-│   │   ├── color_segmentation.py  # Seuillage obstacles
-│   │   ├── kalman_filter.py       # Filtrage poses (x,y,θ,ẋ,ẏ,ω)
-│   │   └── homography.py          # Calculs H_C2AV, H_C2W
-│   │
-│   ├── calibration/           # Phase de calibration
-│   │   ├── calibration_wizard.py  # Séquence interactive complète
-│   │   ├── scale_estimator.py     # Estimation échelle métrique
-│   │   ├── arena_solver.py        # Calcul dimensions arène
-│   │   └── projector_mapping.py   # Transform Monde → Projecteur
-│   │
-│   └── preprocessing/
-│       ├── thresholding.py    # Prétraitement images
-│       ├── contours.py        # Extraction formes obstacles
-│       └── image_utils.py     # Utilitaires CV
-│
-├── visualization/             # Affichage et projection
-│   ├── pygame_renderer.py     # Moteur de rendu principal
-│   ├── projector_overlay.py   # Conversion coordonnées → pixels projecteur
-│   ├── ui_hud.py              # HUD (timer, score, infos)
-│   ├── debug_draw.py          # Visualisation debug (paths, LOS, grid)
-│   └── colors.py              # Palette de couleurs
-│
-├── config/                    # Configuration YAML
-│   ├── arena.yaml             # Calibration, H_C2W, dimensions
-│   ├── camera.yaml            # Paramètres caméra, IDs ArUco
-│   ├── ia.yaml                # Seuils IA, distances sécurité
-│   ├── game.yaml              # Durée match, cooldowns
-│   └── robot.yaml             # Dimensions robot, vitesses max
-│
-├── scripts/                   # Points d'entrée
-│   ├── run_calibration.py     # Lancer wizard calibration
-│   ├── run_game.py            # Lancer partie (boucle 30 FPS)
-│   └── export_debug_data.py   # Export snapshots debug
-│
-├── assets/                    # Ressources
-│   ├── aruco_markers/         # Images markers haute résolution
-│   ├── fonts/                 # Polices pour HUD
-│   └── images/                # Textures, icônes
-│
-├── logs/                      # Logs centralisés
-│   ├── runtime.log
-│   ├── calibration.log
-│   └── debug.log
-│
-└── README.md                  # Ce fichier
+tank_project/
+|
++-- core/                      # Logique metier (independante vision/affichage)
+|   +-- game/                  # Arbitre et regles de jeu
+|   |   +-- game_engine.py     # Boucle principale, orchestration
+|   |   +-- state.py           # Etat complet (robots, score, timer)
+|   |   +-- rules.py           # Regles et parametres de jeu
+|   |   +-- raycast.py         # Detection collision tirs
+|   |   +-- timers.py          # Cooldowns tirs, timer match
+|   |   +-- hits.py            # Gestion impacts
+|   |
+|   +-- ia/                    # Intelligence artificielle
+|   |   +-- behavior_tree.py   # Arbre de comportement modulaire
+|   |   +-- decisions.py       # Conditions tactiques (LOS, distance)
+|   |   +-- strategy.py        # Combiner BT -> objectif + fire_request
+|   |   +-- planners/          # Path planning
+|   |       +-- a_star.py      # Algorithme A*
+|   |       +-- heuristics.py  # Fonctions heuristiques
+|   |       +-- path_utils.py  # Lissage, simplification trajectoires
+|   |
+|   +-- world/                 # Representation monde 2D metrique
+|   |   +-- world_model.py     # Unification : robots, obstacles, zones
+|   |   +-- occupancy_grid.py  # Grille d'occupation 2D (resolution 2cm)
+|   |   +-- inflation.py       # Dilatation obstacles (securite)
+|   |   +-- coordinate_frames.py  # Transformations Camera<->World<->Pygame
+|   |
+|   +-- control/               # Controle bas niveau
+|       +-- trajectory_follower.py  # Suivi waypoints (Pure Pursuit)
+|       +-- kinematics.py      # Modele cinematique Turtlebot
+|       +-- motion_constraints.py  # Limites vitesse/acceleration
+|       +-- ros_bridge_client.py   # Client WebSocket -> ROS
+|
++-- perception/                # Vision et calibration
+|   +-- camera/
+|   |   +-- realsense_stream.py    # Interface RealSense D435
+|   |   +-- aruco_detector.py      # Detection markers ArUco
+|   |   +-- color_segmentation.py  # Seuillage obstacles
+|   |   +-- kalman_filter.py       # Filtrage poses (x,y,theta,vx,vy,omega)
+|   |   +-- homography.py          # Calculs H_C2AV, H_C2W
+|   |
+|   +-- calibration/           # Phase de calibration
+|   |   +-- calibration_wizard.py  # Sequence interactive complete
+|   |   +-- scale_estimator.py     # Estimation echelle metrique
+|   |   +-- arena_solver.py        # Calcul dimensions arene
+|   |   +-- projector_mapping.py   # Transform Monde -> Projecteur
+|   |
+|   +-- preprocessing/
+|       +-- thresholding.py    # Pretraitement images
+|       +-- contours.py        # Extraction formes obstacles
+|       +-- image_utils.py     # Utilitaires CV
+|
++-- visualization/             # Affichage et projection
+|   +-- pygame_renderer.py     # Moteur de rendu principal
+|   +-- projector_overlay.py   # Conversion coordonnees -> pixels projecteur
+|   +-- ui_hud.py              # HUD (timer, score, infos)
+|   +-- debug_draw.py          # Visualisation debug (paths, LOS, grid)
+|   +-- colors.py              # Palette de couleurs
+|
++-- config/                    # Configuration YAML
+|   +-- arena.yaml             # Calibration, H_C2W, dimensions
+|   +-- camera.yaml            # Parametres camera, IDs ArUco
+|   +-- ia.yaml                # Seuils IA, distances securite
+|   +-- game.yaml              # Duree match, cooldowns
+|   +-- robot.yaml             # Dimensions robot, vitesses max
+|
++-- scripts/                   # Points d'entree
+|   +-- run_calibration.py     # Lancer wizard calibration
+|   +-- run_game.py            # Lancer partie (boucle 30 FPS)
+|   +-- export_debug_data.py   # Export snapshots debug
+|
++-- assets/                    # Ressources
+|   +-- aruco_markers/         # Images markers haute resolution
+|   +-- fonts/                 # Polices pour HUD
+|   +-- images/                # Textures, icones
+|
++-- logs/                      # Logs centralises
+|   +-- runtime.log
+|   +-- calibration.log
+|   +-- debug.log
+|
++-- README.md                  # Ce fichier
 ```
 
 ---
 
-## 🔧 Phase 1 : Calibration (one-time setup)
+## Phase 1 : Calibration (one-time setup)
 
-La calibration s'effectue **une seule fois** avant la première partie, ou quand l'arène change.
+La calibration s'effectue **une seule fois** avant la premiere partie, ou quand l'arene change.
 
 ### Objectif
 
-Établir la transformation **Camera → World** (métrique) et cartographier les obstacles fixes.
+Etablir la transformation **Camera -> World** (metrique) et cartographier les obstacles fixes.
 
-### Étapes du wizard
+### Etapes du wizard
 
-#### 1.1 Définition Safe Zone
+#### 1.1 Definition Safe Zone
 
-**But** : Définir la marge de projection pour éviter les bords du projecteur.
+**But** : Definir la marge de projection pour eviter les bords du projecteur.
 
-- Marge configurée : `MARGIN = 50 px`
-- Zone de jeu projetée : `(50, 50) → (1870, 1030)` pour projecteur 1920×1080
+- Marge configuree : `MARGIN = 50 px`
+- Zone de jeu projetee : `(50, 50) -> (974, 718)` pour projecteur 1024x768
 
 **Logs** :
 ```
 [CALIB] MARGIN set to 50 px
-[CALIB] Arena rect in projector: (50,50) -> (1870,1030)
+[CALIB] Arena rect in projector: (50,50) -> (974,718)
 ```
 
-#### 1.2 Calibration géométrique (H_C2AV)
+#### 1.2 Calibration geometrique (H_C2AV)
 
-**But** : Obtenir l'homographie **Camera → Arena Virtual** (espace normalisé [0,1]×[0,1]).
+**But** : Obtenir l'homographie **Camera -> Arena Virtual** (espace normalise [0,1]x[0,1]).
 
-**Procédure** :
-1. Projecteur affiche 4 ArUco aux coins de l'arène (IDs 0-3)
-2. Caméra détecte les 4 markers
-3. Correspondances établies :
-   - ArUco 0 → (0.0, 0.0) bottom-left
-   - ArUco 1 → (1.0, 0.0) bottom-right
-   - ArUco 2 → (1.0, 1.0) top-right
-   - ArUco 3 → (0.0, 1.0) top-left
+**Procedure** :
+1. Projecteur affiche 4 ArUco aux coins de l'arene (IDs 0-3)
+2. Camera detecte les 4 markers
+3. Correspondances etablies :
+   - ArUco 0 -> (0.0, 0.0) bottom-left
+   - ArUco 1 -> (1.0, 0.0) bottom-right
+   - ArUco 2 -> (1.0, 1.0) top-right
+   - ArUco 3 -> (0.0, 1.0) top-left
 4. Calcul homographie : `H_C2AV = cv2.findHomography(src_points, dst_points)`
 
 **Logs** :
@@ -166,23 +166,19 @@ La calibration s'effectue **une seule fois** avant la première partie, ou quand
 [CALIB] H_C2AV computed successfully
 ```
 
-**Option raffinement** :
-- Répéter avec plusieurs captures
-- Moyenner les homographies ou utiliser RANSAC
+#### 1.3 Calibration metrique (H_C2W)
 
-#### 1.3 Calibration métrique (H_C2W)
+**But** : Convertir l'espace Arena Virtual en **metres reels**.
 
-**But** : Convertir l'espace Arena Virtual en **mètres réels**.
-
-**Procédure** :
-1. Placer un ArUco physique de taille connue dans l'arène (ex: 10 cm)
-2. Utilisateur entre la taille réelle : `marker_size_real = 0.10 m`
-3. Détection ArUco robot (ID 4 ou 5)
-4. Estimation taille en unités AV :
+**Procedure** :
+1. Placer un ArUco physique de taille connue dans l'arene (ex: 10 cm)
+2. Utilisateur entre la taille reelle : `marker_size_real = 0.10 m`
+3. Detection ArUco robot (ID 4 ou 5)
+4. Estimation taille en unites AV :
    ```
    size_av = estimate_marker_size_av(corners, H_C2AV)
    ```
-5. Calcul de l'échelle :
+5. Calcul de l'echelle :
    ```
    scale = marker_size_real / size_av
    ```
@@ -194,7 +190,7 @@ La calibration s'effectue **une seule fois** avant la première partie, ou quand
    ```
 7. Homographie finale :
    ```
-   H_C2W = S · H_C2AV
+   H_C2W = S * H_C2AV
    ```
 
 **Logs** :
@@ -206,23 +202,23 @@ La calibration s'effectue **une seule fois** avant la première partie, ou quand
 [CALIB] Calibration OK
 ```
 
-**Résultat** :
-- Transformation complète : `(u, v)` pixels caméra → `(x_W, y_W)` mètres monde
+**Resultat** :
+- Transformation complete : `(u, v)` pixels camera -> `(x_W, y_W)` metres monde
 
 #### 1.4 Cartographie obstacles statiques
 
-**But** : Détecter obstacles fixes et créer la grille d'occupation de base.
+**But** : Detecter obstacles fixes et creer la grille d'occupation de base.
 
-**Procédure** :
+**Procedure** :
 1. Projecteur affiche fond blanc uniforme
 2. Placer obstacles physiques (blocs, murs)
-3. Capture image caméra
+3. Capture image camera
 4. Seuillage : obstacles sombres sur fond blanc
 5. Extraction contours
-6. Conversion pixels → mètres via `H_C2W`
+6. Conversion pixels -> metres via `H_C2W`
 7. Remplissage grille d'occupation :
-   - Résolution : `RES = 0.02 m` (2 cm)
-   - Taille arène : ex. `L = 2.85 m`, `W = 1.90 m`
+   - Resolution : `RES = 0.02 m` (2 cm)
+   - Taille arene : ex. `L = 2.85 m`, `W = 1.90 m`
    - Dimensions grille : `Nx = 143, Ny = 95 cellules`
    - Valeurs : `0 = libre`, `1 = obstacle fixe`
 
@@ -234,35 +230,35 @@ La calibration s'effectue **une seule fois** avant la première partie, ou quand
 [CALIB] Static obstacles mapped
 ```
 
-**Sauvegarde** : Tous les résultats dans `config/arena.yaml`
+**Sauvegarde** : Tous les resultats dans `config/arena.yaml`
 
 ---
 
-## 🎯 Phase 2 : Jeu (boucle temps réel 30 FPS)
+## Phase 2 : Jeu (boucle temps reel 30 FPS)
 
-Une fois calibré, le système entre en boucle de jeu.
+Une fois calibre, le systeme entre en boucle de jeu.
 
-### 2.1 Vision & Tracking
+### 2.1 Vision et Tracking
 
 #### 2.1.1 Acquisition
 - RealSense capture frame couleur (et optionnellement profondeur)
 
-#### 2.1.2 Détection ArUco robots
-- Robot IA → **ID 4**
-- Robot Humain → **ID 5**
+#### 2.1.2 Detection ArUco robots
+- Robot IA -> **ID 4**
+- Robot Humain -> **ID 5**
 
-Pour chaque robot détecté :
+Pour chaque robot detecte :
 - Centre marker en pixels : `(u, v)`
 - Orientation : `theta_cam` (radians)
 
-#### 2.1.3 Transformation métrique
+#### 2.1.3 Transformation metrique
 
-Conversion pixels → monde :
+Conversion pixels -> monde :
 ```
 [x_W, y_W, 1]^T = H_C2W * [u, v, 1]^T
 ```
 
-Résultat : `(x_W, y_W)` en mètres, `theta` en radians (repère monde)
+Resultat : `(x_W, y_W)` en metres, `theta` en radians (repere monde)
 
 **Logs (exemple 1 Hz)** :
 ```
@@ -274,24 +270,24 @@ Résultat : `(x_W, y_W)` en mètres, `theta` en radians (repère monde)
 
 **But** : Stabiliser poses et estimer vitesses.
 
-#### Modèle d'état (pour chaque robot)
+#### Modele d'etat (pour chaque robot)
 
-État : `X = [x, y, vx, vy, θ, ω]^T`
+Etat : `X = [x, y, vx, vy, theta, omega]^T`
 
-Modèle discret (dt = 1/30 s) :
+Modele discret (dt = 1/30 s) :
 ```
-x_{k+1} = x_k + vx_k · dt
-y_{k+1} = y_k + vy_k · dt
+x_{k+1} = x_k + vx_k * dt
+y_{k+1} = y_k + vy_k * dt
 vx_{k+1} = vx_k
 vy_{k+1} = vy_k
-θ_{k+1} = θ_k + ω_k · dt
-ω_{k+1} = ω_k
+theta_{k+1} = theta_k + omega_k * dt
+omega_{k+1} = omega_k
 ```
 
-Mesures caméra : `Z = [x_mes, y_mes, θ_mes]^T`
+Mesures camera : `Z = [x_mes, y_mes, theta_mes]^T`
 
 #### Cycle Kalman
-1. **Predict** : Projection état à k+1
+1. **Predict** : Projection etat a k+1
 2. **Update** : Correction avec mesure ArUco
 
 **Avantages** :
@@ -306,17 +302,17 @@ Mesures caméra : `Z = [x_mes, y_mes, θ_mes]^T`
 
 ### 2.3 Grille d'occupation dynamique
 
-**Mise à jour** :
+**Mise a jour** :
 1. Partir de la grille statique (obstacles fixes)
 2. Marquer robots comme obstacles dynamiques :
-   - Rayon robot : `R_robot ≈ 0.18 m`
-   - Conversion cellules : `R_cells = int(0.18 / 0.02) ≈ 9 cellules`
-3. **Inflation** : Rayon sécurité additionnel
-   - Rayon total : `0.24 m → 12 cellules`
+   - Rayon robot : `R_robot = 0.18 m`
+   - Conversion cellules : `R_cells = int(0.18 / 0.02) = 9 cellules`
+3. **Inflation** : Rayon securite additionnel
+   - Rayon total : `0.24 m -> 12 cellules`
 4. Costmap style ROS :
    - `0` = libre
    - `100` = obstacle
-   - Valeurs intermédiaires possibles
+   - Valeurs intermediaires possibles
 
 **Usage** : Line-of-sight IA, path planning
 
@@ -328,14 +324,14 @@ Mesures caméra : `Z = [x_mes, y_mes, θ_mes]^T`
 
 ### 2.4 Game Engine (arbitre)
 
-**Responsabilités** : Application stricte des règles, aucune décision "intelligente".
+**Responsabilites** : Application stricte des regles, aucune decision "intelligente".
 
-#### 2.4.1 Timers & cooldowns
+#### 2.4.1 Timers et cooldowns
 
 Variables maintenues :
-- `t_game` : Temps écoulé depuis début partie
-- `next_allowed_shot_human` : Prochain tir humain autorisé
-- `next_allowed_shot_ai` : Prochain tir IA autorisé
+- `t_game` : Temps ecoule depuis debut partie
+- `next_allowed_shot_human` : Prochain tir humain autorise
+- `next_allowed_shot_ai` : Prochain tir IA autorise
 
 Exemple configuration :
 - Tir humain automatique : `T_human = 5.0 s`
@@ -346,8 +342,8 @@ Exemple configuration :
 ```
 Si t_now >= next_allowed_shot_human :
     1. Calcul rayon depuis (x_H, y_H) direction theta_H
-    2. Raycast (détection collisions obstacles + robots)
-    3. Si Robot4 touché → hits_robot4 += 1
+    2. Raycast (detection collisions obstacles + robots)
+    3. Si Robot4 touche -> hits_robot4 += 1
     4. next_allowed_shot_human = t_now + T_human
 ```
 
@@ -356,19 +352,19 @@ Si t_now >= next_allowed_shot_human :
 ```
 Si IA renvoie fire_request=True ET cooldown OK :
     1. Raycast depuis (x_A, y_A) direction theta_A
-    2. Si Robot5 touché → hits_robot5 += 1
+    2. Si Robot5 touche -> hits_robot5 += 1
     3. next_allowed_shot_ai = t_now + T_ai_cooldown
 ```
 
 #### 2.4.4 Fin de partie
 
 **Conditions** :
-- Durée écoulée : `t_now >= t_start + T_match` (ex: 3 min)
+- Duree ecoulee : `t_now >= t_start + T_match` (ex: 3 min)
 - OU nombre hits atteint : `hits_robot >= H_max`
 
-**Détermination vainqueur** :
-- Plus grand nombre de hits infligés
-- Ou moins de hits reçus
+**Determination vainqueur** :
+- Plus grand nombre de hits infliges
+- Ou moins de hits recus
 
 **Logs** :
 ```
@@ -383,53 +379,53 @@ Si IA renvoie fire_request=True ET cooldown OK :
 
 L'IA **propose** des actions, n'applique rien directement.
 
-#### 2.5.1 Entrées IA
+#### 2.5.1 Entrees IA
 
-- Pose filtrée Robot4 : `(x_A, y_A, theta_A, vx_A, vy_A, omega_A)`
-- Pose filtrée Robot5 : `(x_H, y_H, theta_H, vx_H, vy_H, omega_H)`
-- Occupancy grid gonflée (costmap)
-- État jeu : temps restant, hits, cooldowns
+- Pose filtree Robot4 : `(x_A, y_A, theta_A, vx_A, vy_A, omega_A)`
+- Pose filtree Robot5 : `(x_H, y_H, theta_H, vx_H, vy_H, omega_H)`
+- Occupancy grid gonflee (costmap)
+- Etat jeu : temps restant, hits, cooldowns
 
 #### 2.5.2 Arbre de comportement (Behavior Tree)
 
-**Structure exemple** :
+**Structure** :
 
 ```
-Selector (priorité)
-├─ Sequence "SURVIE"
-│  ├─ Condition: distance_ennemi < d_safe ?
-│  └─ Action: RETREAT (chercher cover, s'éloigner)
-│
-└─ Selector "COMBAT"
-   ├─ Sequence "ATTAQUE"
-   │  ├─ Condition: line_of_sight claire ?
-   │  ├─ Action: maintenir distance optimale
-   │  └─ Action: fire_request = True
-   │
-   └─ Sequence "REPOSITIONNEMENT"
-      ├─ Action: FLANK (contourner obstacles)
-      └─ Action: chercher position tir
+Selector (priorite)
++-- Sequence "SURVIE"
+|   +-- Condition: distance_ennemi < d_safe ?
+|   +-- Action: RETREAT (chercher cover, s'eloigner)
+|
++-- Selector "COMBAT"
+    +-- Sequence "ATTAQUE"
+    |   +-- Condition: line_of_sight claire ?
+    |   +-- Action: maintenir distance optimale
+    |   +-- Action: fire_request = True
+    |
+    +-- Sequence "REPOSITIONNEMENT"
+        +-- Action: FLANK (contourner obstacles)
+        +-- Action: chercher position tir
 ```
 
-**États possibles** :
-- `RETREAT` : Fuite, priorité survie
+**Etats possibles** :
+- `RETREAT` : Fuite, priorite survie
 - `ATTACK` : Ligne de vue claire, tir actif
 - `FLANK` : Contournement tactique
-- `SEEK_COVER` : Recherche couverture
+- `HUNT` : Recherche ennemi
 
 #### 2.5.3 Path Planning
 
 **Algorithme** : A* sur grille d'occupation
 
 **Processus** :
-1. IA décide objectif : `(x_goal, y_goal)`
+1. IA decide objectif : `(x_goal, y_goal)`
 2. Conversion en cellule grille
 3. A* calcule chemin :
-   - Départ : cellule Robot4
-   - Arrivée : cellule proche de goal (libre)
+   - Depart : cellule Robot4
+   - Arrivee : cellule proche de goal (libre)
    - Heuristique : distance euclidienne
-   - Coût : costmap (éviter obstacles)
-4. Résultat : liste waypoints `[(x_1, y_1), ..., (x_n, y_n)]` en mètres
+   - Cout : costmap (eviter obstacles)
+4. Resultat : liste waypoints `[(x_1, y_1), ..., (x_n, y_n)]` en metres
 
 **Logs** :
 ```
@@ -438,35 +434,35 @@ Selector (priorité)
 [AI] LOS: FALSE, fire_request: FALSE
 ```
 
-### 2.6 Contrôle & ROS Bridge
+### 2.6 Controle et ROS Bridge
 
 #### 2.6.1 Suivi de trajectoire
 
-**Contrôleur simple** (Pure Pursuit) :
+**Controleur simple** (Pure Pursuit) :
 
 ```
 Waypoint actuel: (x_wp, y_wp)
 Erreur position:
     dx = x_wp - x_A
     dy = y_wp - y_A
-    distance = sqrt(dx² + dy²)
+    distance = sqrt(dx^2 + dy^2)
 
 Erreur orientation:
     theta_target = atan2(dy, dx)
     dtheta = angle_diff(theta_A, theta_target)
 
 Commandes:
-    v = k_v * distance          (vitesse linéaire)
-    ω = k_theta * dtheta        (vitesse angulaire)
+    v = k_v * distance          (vitesse lineaire)
+    omega = k_theta * dtheta    (vitesse angulaire)
 
 Contraintes:
-    v ∈ [-0.22, 0.22] m/s
-    ω ∈ [-2.84, 2.84] rad/s
+    v in [-0.22, 0.22] m/s
+    omega in [-2.84, 2.84] rad/s
 ```
 
-**Cas spéciaux** :
-- Waypoint atteint → passer au suivant
-- Plus de waypoint → `v=0`, orientation vers ennemi si tir
+**Cas speciaux** :
+- Waypoint atteint -> passer au suivant
+- Plus de waypoint -> `v=0`, orientation vers ennemi si tir
 
 #### 2.6.2 Envoi ROS Bridge
 
@@ -474,12 +470,13 @@ Contraintes:
 ```json
 {
   "robot_id": 4,
-  "v": 0.15,
-  "omega": -0.30
+  "linear": 0.15,
+  "angular": -0.30,
+  "timestamp": 1702234567.123
 }
 ```
 
-ROS-bridge reçoit → publie sur `/cmd_vel` (Twist)
+ROS-bridge recoit -> publie sur `/cmd_vel` (Twist)
 
 **Logs** :
 ```
@@ -490,11 +487,11 @@ ROS-bridge reçoit → publie sur `/cmd_vel` (Twist)
 
 ### 2.7 Visualisation (Pygame + Projecteur)
 
-#### 2.7.1 Transformation Monde → Projecteur
+#### 2.7.1 Transformation Monde -> Projecteur
 
-**Paramètres** :
-- Arène métrique : `Lx × Ly` mètres
-- Zone projetée : `ARENA_PX_WIDTH × ARENA_PX_HEIGHT` pixels
+**Parametres** :
+- Arene metrique : `Lx x Ly` metres
+- Zone projetee : `ARENA_PX_WIDTH x ARENA_PX_HEIGHT` pixels
 - Marge : `MARGIN` pixels
 
 **Scale** :
@@ -506,36 +503,36 @@ S = min(Sx, Sy)    # uniforme, garde aspect ratio
 
 **Conversion point** :
 ```
-Point monde: (x_W, y_W) en mètres
+Point monde: (x_W, y_W) en metres
 
 Pixels projecteur:
     Xp = MARGIN + x_W * S
     Yp = MARGIN + (Ly - y_W) * S    # y=0 en bas
 ```
 
-#### 2.7.2 Éléments affichés
+#### 2.7.2 Elements affiches
 
-**1. Fond arène**
+**1. Fond arene**
 - Rectangle zone de jeu
 - Bordures, grille optionnelle
 
 **2. Obstacles**
-- Rectangles/polygones alignés grille
-- Couleur distincte (gris foncé)
+- Rectangles/polygones alignes grille
+- Couleur distincte (gris fonce)
 
 **3. Robots**
-- Cercles position `(x_W, y_W)` → `(Xp, Yp)`
+- Cercles position `(x_W, y_W)` -> `(Xp, Yp)`
 - Orientation : petit trait dans direction `theta`
 - Couleurs : bleu (IA), rouge (humain)
 
 **4. Canon virtuel**
-- Ligne de visée (1 mètre) :
+- Ligne de visee (1 metre) :
   ```
   x_end = x_robot + cos(theta)
   y_end = y_robot + sin(theta)
   ```
-- Conversion `(x_end, y_end)` → pixels
-- Couleur selon état (blanc normal, jaune si tir imminent)
+- Conversion `(x_end, y_end)` -> pixels
+- Couleur selon etat (blanc normal, jaune si tir imminent)
 
 **5. Lock-on IA**
 - Si IA a line-of-sight sur humain :
@@ -549,12 +546,12 @@ Pixels projecteur:
   HITS IA: 3
   HITS HUMAN: 2
   ```
-- **État IA** : ATTACK / FLANK / RETREAT
+- **Etat IA** : ATTACK / FLANK / RETREAT
 - **Cooldowns** : Barres de progression tirs
 
 **7. Fin de partie**
-- Écran overlay : `"WINNER: HUMAN"` ou `"WINNER: AI"`
-- Récapitulatif scores
+- Ecran overlay : `"WINNER: HUMAN"` ou `"WINNER: AI"`
+- Recapitulatif scores
 - Option rejouer
 
 **Logs** :
@@ -566,103 +563,103 @@ Pixels projecteur:
 
 ---
 
-## 🌐 Espaces de coordonnées
+## Espaces de coordonnees
 
-Le système utilise 4 repères principaux :
+Le systeme utilise 4 reperes principaux :
 
 ### 1. Camera (C)
-- Origine : Centre optique caméra
-- Unités : **pixels**
-- Coordonnées : `(u, v)`
-- Axes : u→droite, v→bas
+- Origine : Centre optique camera
+- Unites : **pixels**
+- Coordonnees : `(u, v)`
+- Axes : u->droite, v->bas
 
 ### 2. Arena Virtual (AV)
-- Origine : Coin bas-gauche arène
-- Unités : **normalisé [0, 1]**
-- Coordonnées : `(x_av, y_av)`
-- Usage : Intermédiaire calibration
+- Origine : Coin bas-gauche arene
+- Unites : **normalise [0, 1]**
+- Coordonnees : `(x_av, y_av)`
+- Usage : Intermediaire calibration
 
 ### 3. World (W)
-- Origine : Coin bas-gauche arène
-- Unités : **mètres**
-- Coordonnées : `(x_W, y_W)`
-- Axes : x→droite, y→haut, z→sortant (règle main droite)
-- **Principal repère utilisé**
+- Origine : Coin bas-gauche arene
+- Unites : **metres**
+- Coordonnees : `(x_W, y_W)`
+- Axes : x->droite, y->haut, z->sortant (regle main droite)
+- **Principal repere utilise**
 
 ### 4. Projecteur (PROJ)
-- Origine : Coin haut-gauche image projetée
-- Unités : **pixels projecteur**
-- Coordonnées : `(Xp, Yp)`
-- Résolution : ex. 1920×1080
+- Origine : Coin haut-gauche image projetee
+- Unites : **pixels projecteur**
+- Coordonnees : `(Xp, Yp)`
+- Resolution : ex. 1024x768
 
 ### Transformations
 
 ```
-Camera → AV:    H_C2AV  (homographie, calibration géométrique)
-AV → World:     S       (scaling métrique)
-Camera → World: H_C2W = S · H_C2AV
-World → Proj:   Scaling linéaire + translation (margin)
+Camera -> AV:    H_C2AV  (homographie, calibration geometrique)
+AV -> World:     S       (scaling metrique)
+Camera -> World: H_C2W = S * H_C2AV
+World -> Proj:   Scaling lineaire + translation (margin)
 ```
 
 ---
 
-## 🏗️ Principes d'architecture
+## Principes d'architecture
 
-### ✅ Séparation des responsabilités
+### Separation des responsabilites
 
-Chaque module a un rôle clair :
-- **Vision** : Capte et détecte
-- **Monde** : Représente état métrique
-- **Jeu** : Applique règles
-- **IA** : Décide stratégie
-- **Contrôle** : Exécute mouvements
+Chaque module a un role clair :
+- **Vision** : Capte et detecte
+- **Monde** : Represente etat metrique
+- **Jeu** : Applique regles
+- **IA** : Decide strategie
+- **Controle** : Execute mouvements
 - **Visualisation** : Affiche
 
-### ✅ Clean Architecture
+### Clean Architecture
 
-- `core/` ne dépend **JAMAIS** de :
+- `core/` ne depend **JAMAIS** de :
   - Pygame
-  - Caméra
+  - Camera
   - Sockets
-- `perception/` ne dépend **JAMAIS** de :
+- `perception/` ne depend **JAMAIS** de :
   - Logique jeu
   - IA
-- `visualization/` ne prend **JAMAIS** de décisions
+- `visualization/` ne prend **JAMAIS** de decisions
 
-### ✅ Modularité
+### Modularite
 
-**Remplaçable facilement** :
-- Changer caméra (ZED, webcam) → toucher uniquement `perception/camera/`
-- Changer IA → toucher uniquement `core/ia/`
-- Changer pathfinding → toucher uniquement `core/ia/planners/`
-- Ajouter robot → configuration, pas code
+**Remplacable facilement** :
+- Changer camera (ZED, webcam) -> toucher uniquement `perception/camera/`
+- Changer IA -> toucher uniquement `core/ia/`
+- Changer pathfinding -> toucher uniquement `core/ia/planners/`
+- Ajouter robot -> configuration, pas code
 
-### ✅ Configuration externalisée
+### Configuration externalisee
 
-**Tout ce qui peut varier → YAML** :
-- Dimensions arène
+**Tout ce qui peut varier -> YAML** :
+- Dimensions arene
 - Vitesse robots
 - Seuils IA
-- Durée partie
+- Duree partie
 - IDs ArUco
 
 **Avantage** : Reconfigurer sans recompiler
 
-### ✅ Scalabilité
+### Scalabilite
 
 **Extensions futures faciles** :
 - Mode 1v1v1 (3 robots)
 - Nouveaux types obstacles
-- Power-ups projetés
-- Mini-map temps réel
-- Multiples stratégies IA switchables
+- Power-ups projetes
+- Mini-map temps reel
+- Multiples strategies IA switchables
 - Enregistrement replay
 
 ---
 
-## 🚀 Utilisation
+## Utilisation
 
-### Première utilisation : Calibration
+### Premiere utilisation : Calibration
 
 ```bash
 # Activer environnement Python
@@ -673,12 +670,12 @@ python3 scripts/run_calibration.py
 ```
 
 **Suivre les instructions** :
-1. Définir safe zone
-2. Détecter coins projetés (4 ArUco)
+1. Definir safe zone
+2. Detecter coins projetes (4 ArUco)
 3. Placer marker physique connu (ex: 10cm)
 4. Cartographier obstacles fixes
 
-→ Génère `config/arena.yaml`
+-> Genere `config/arena.yaml`
 
 ### Lancer une partie
 
@@ -686,7 +683,7 @@ python3 scripts/run_calibration.py
 # Activer environnement
 pyenv activate ubuntu
 
-# Démarrer ROS Bridge (terminal séparé)
+# Demarrer ROS Bridge (terminal separe)
 # roslaunch rosbridge_server rosbridge_websocket.launch
 
 # Lancer le jeu
@@ -695,23 +692,23 @@ python3 scripts/run_game.py
 
 **Boucle principale 30 FPS** :
 - Vision tracking
-- IA décisions
-- Contrôle robot IA
+- IA decisions
+- Controle robot IA
 - Projection visualisation
 
 ### Debugging
 
 ```bash
-# Export debug snapshot (config + grille + état)
+# Export debug snapshot (config + grille + etat)
 python3 scripts/export_debug_data.py
 
-# Capture live depuis caméra (requiert RealSense connectée)
+# Capture live depuis camera (requiert RealSense connectee)
 python3 scripts/export_debug_data.py --live
 
-# Export vers répertoire spécifique
+# Export vers repertoire specifique
 python3 scripts/export_debug_data.py --output-dir ~/mon_debug
 
-# Voir logs temps réel
+# Voir logs temps reel
 tail -f logs/runtime.log
 
 # Activer affichage debug (config/game.yaml)
@@ -721,53 +718,57 @@ debug_mode: true
 **Contenu export debug** :
 - `config/` : Tous les fichiers YAML de configuration
 - `occupancy_grid.npy` / `.png` : Grille d'occupation (NumPy + visualisation)
-- `game_state.json` : État complet du jeu (poses, scores, IA)
-- `manifest.json` : Index des éléments exportés
-- `camera_frame.png` / `_annotated.png` : Captures caméra (mode `--live`)
-- `aruco_detections.json` : Détections ArUco (mode `--live`)
-- `depth_frame.npy` / `_viz.png` : Données profondeur (mode `--live`)
+- `game_state.json` : Etat complet du jeu (poses, scores, IA)
+- `manifest.json` : Index des elements exportes
+- `camera_frame.png` / `_annotated.png` : Captures camera (mode `--live`)
+- `aruco_detections.json` : Detections ArUco (mode `--live`)
+- `depth_frame.npy` / `_viz.png` : Donnees profondeur (mode `--live`)
 - `*.log` : Copies des fichiers logs
 
 ---
 
-## 📊 Logs & Monitoring
+## Logs et Monitoring
 
 ### Format logs
 
 Tous les logs suivent le pattern :
 ```
-[MODULE] Message détaillé
+[MODULE] Message detaille
 ```
 
 **Modules** :
 - `[CALIB]` : Calibration
-- `[VISION]` : Détection ArUco
+- `[VISION]` : Detection ArUco
 - `[KALMAN]` : Filtrage
 - `[GRID]` : Grille occupation
 - `[GAME]` : Arbitre
-- `[AI]` : Stratégie IA
-- `[CTRL]` : Contrôle
+- `[AI]` : Strategie IA
+- `[CTRL]` : Controle
 - `[ROS]` : Communication bridge
 - `[VIS]` : Visualisation
 
 ### Fichiers logs
 
 - `logs/calibration.log` : Historique calibrations
-- `logs/runtime.log` : Parties jouées
-- `logs/debug.log` : Informations détaillées debug
+- `logs/runtime.log` : Parties jouees
+- `logs/debug.log` : Informations detaillees debug
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
-### Fichiers clés
+### Fichiers cles
 
 #### `config/arena.yaml`
 ```yaml
 projector:
-  width: 1920
-  height: 1080
-  margin: 50
+  width: 1024
+  height: 768
+  margin_px: 50
+
+display:
+  fullscreen: false
+  display_index: 0
 
 arena:
   width_m: 2.85
@@ -775,129 +776,67 @@ arena:
 
 transform:
   H_C2W: [[...], [...], [...]]  # 3x3 matrix
-  scale: 1.149
+  scale_m_per_av: 1.149
 
 obstacles: [...]  # Liste obstacles fixes
 ```
 
 #### `config/game.yaml`
 ```yaml
-match_duration_s: 180
-human_fire_cooldown_s: 5.0
-ai_fire_cooldown_s: 3.0
-max_hits: 10
-fps: 30
+match:
+  duration_seconds: 180
+  tick_rate_fps: 30
+
+cooldowns:
+  human_shot_seconds: 5.0
+  ai_shot_seconds: 3.0
+
+win_conditions:
+  max_hits: 10
 ```
 
 #### `config/ia.yaml`
 ```yaml
-safe_distance_m: 0.8
-attack_distance_m: 1.5
-retreat_threshold_m: 0.5
-path_replan_interval_s: 2.0
+behavior:
+  danger_distance_m: 0.8
+  optimal_range_min_m: 1.2
+  optimal_range_max_m: 3.5
+
+strategy:
+  heuristic: euclidean
+  path_simplify: true
+
+decision_rate:
+  replan_interval: 10
 ```
 
 ---
 
-## 📚 Dépendances
+## Dependances
 
-### Python (requirements.txt)
+### Python
+- Python 3.8+
+- OpenCV (cv2) avec module aruco
+- NumPy
+- Pygame
+- PyYAML
+- pyrealsense2 (Intel RealSense SDK)
+- scipy (pour distance transform)
 
-```
-opencv-contrib-python>=4.8.0
-pyrealsense2>=2.54.0
-pygame>=2.5.0
-numpy>=1.24.0
-scipy>=1.11.0
-pyyaml>=6.0
-websocket-client>=1.6.0
-```
+### Installation
 
-### Système
-
-- **ROS Noetic** (ou ROS2 Humble)
-- **rosbridge_server** pour communication WebSocket
-- **RealSense SDK 2.0**
-
-### Hardware
-
-- Intel RealSense D435 (caméra RGB-D)
-- Projecteur (recommandé ≥1920×1080)
-- 2× Turtlebot Burger avec ArUco markers
-- PC Linux (Ubuntu 20.04/22.04 recommandé)
-
----
-
-## 🎓 Ressources techniques
-
-### Calibration
-- Zhang's camera calibration
-- Homography estimation (OpenCV docs)
-- ArUco marker detection
-
-### IA
-- Behavior Trees (article: "Behavior Trees for Robotics")
-- A* pathfinding
-- Occupancy grid navigation
-
-### Contrôle
-- Pure Pursuit controller
-- Differential drive kinematics
-- ROS navigation stack concepts
-
-### Vision
-- Kalman filtering for tracking
-- Perspective transformation
-- Color-based segmentation
-
----
-
-## 👥 Contribution
-
-Développé dans le cadre d'un projet de robotique mobile avec vision par ordinateur et IA temps réel.
-
-**Structure respectant** :
-- PEP 8 (Python style)
-- Clean Architecture
-- SOLID principles
-- Modularité maximale
-
----
-
-## 📝 License
-
-Projet académique - À définir selon contexte institutionnel.
-
----
-
-## 🆘 Troubleshooting
-
-### Import Error: "attempted relative import beyond top-level package"
-**Solution** : Vérifier que imports absolus sont utilisés (`from core.world...` et non `from ...core.world...`)
-
-### RuntimeError: No device connected (RealSense)
-**Cause** : Caméra non branchée ou drivers manquants  
-**Solution** : 
 ```bash
-# Vérifier connexion
-rs-enumerate-devices
-
-# Réinstaller drivers si besoin
-sudo apt install librealsense2-utils
+pip install -r requirements.txt
 ```
 
-### WebSocket connection failed
-**Cause** : ROS Bridge non lancé  
-**Solution** :
-```bash
-roslaunch rosbridge_server rosbridge_websocket.launch
-```
-
-### IA path planning échoue
-**Cause** : Grid mal initialisée ou goal inaccessible  
-**Solution** : Activer `debug_draw` pour visualiser costmap
+### Materiel requis
+- Intel RealSense D435 ou D455
+- Projecteur 1024x768 ou superieur
+- 2x Turtlebot Burger avec marqueurs ArUco
+- ROS Bridge Server
 
 ---
 
-**Version** : 1.0  
-**Dernière mise à jour** : 2025-12-06
+## Auteurs
+
+Projet VA-51 - Systeme de combat robotique en realite mixte.

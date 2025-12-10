@@ -90,7 +90,7 @@ class ArucoDetector:
                     'orientation': orientation
                 }
             
-            print(f"[ARUCO] Detected {len(ids)} markers: {ids.flatten().tolist()}")
+            print("[ARUCO] Detected {} markers: {}".format(len(ids), ids.flatten().tolist()))
         
         return results
     

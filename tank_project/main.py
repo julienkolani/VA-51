@@ -88,7 +88,7 @@ if __name__ == '__main__':
         print("\n[MAIN] Interruption utilisateur (Ctrl+C)")
         sys.exit(0)
     except Exception as e:
-        print(f"\n[MAIN] ERREUR: {e}")
+        print("\n[MAIN] ERREUR: {}".format(e))
         import traceback
         traceback.print_exc()
         sys.exit(1)

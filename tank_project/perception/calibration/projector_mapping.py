@@ -17,8 +17,8 @@ class ProjectorMapping:
     """
     
     def __init__(self,
-                 projector_width: int = 1920,
-                 projector_height: int = 1080,
+                 projector_width: int = 1024,
+                 projector_height: int = 768,
                  margin: int = 50):
         """
         Initialize projector mapping.
@@ -59,8 +59,8 @@ class ProjectorMapping:
         scale_y = self.draw_h / height_m
         self.scale = min(scale_x, scale_y)
         
-        print(f"[PROJ_MAP] Arena set: {width_m:.2f}x{height_m:.2f}m, "
-              f"scale: {self.scale:.1f} px/m")
+        print("[PROJ_MAP] Arena set: {:.2f}x{:.2f}m, "
+              "scale: {:.1f} px/m".format(width_m, height_m, self.scale))
         
     def world_to_projector(self, x_m: float, y_m: float) -> Tuple[int, int]:
         """

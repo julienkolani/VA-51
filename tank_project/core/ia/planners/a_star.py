@@ -15,6 +15,7 @@ Logs: [ASTAR] Path found: N waypoints, length: M meters
 import numpy as np
 import heapq
 from typing import List, Tuple, Optional
+from .heuristics import euclidean_distance, manhattan_distance, diagonal_distance
 
 
 class AStarPlanner:
@@ -35,93 +36,103 @@ class AStarPlanner:
         self.grid = occupancy_grid
         self.heuristic_name = heuristic
         
+    def _heuristic(self, cell1, cell2):
+        """Calculate heuristic cost."""
+        if self.heuristic_name == 'manhattan':
+            return manhattan_distance(cell1, cell2)
+        elif self.heuristic_name == 'diagonal':
+            return diagonal_distance(cell1, cell2)
+        else:
+            return euclidean_distance(cell1, cell2)
+
+    
     def plan(self, start_m: Tuple[float, float], 
              goal_m: Tuple[float, float]) -> Optional[List[Tuple[float, float]]]:
         """
         Find path from start to goal.
+        """
+        start_cell = self.grid.world_to_grid(*start_m)
+        goal_cell = self.grid.world_to_grid(*goal_m)
         
-        Args:
-            start_m: (x, y) start position in meters
-            goal_m: (x, y) goal position in meters
+        # Check bounds
+        if not self.grid._is_valid_cell(*start_cell) or not self.grid._is_valid_cell(*goal_cell):
+            return None
             
-        Returns:
-            List of waypoints [(x1,y1), (x2,y2), ...] in meters
-            None if no path exists
-            
-        Algorithm:
-            1. Convert meter positions to grid cells
-            2. Initialize open/closed sets
-            3. A* main loop:
-               - Pop node with lowest f = g + h
-               - Check if goal reached
-               - Expand neighbors
-               - Update costs
-            4. Reconstruct path from goal to start
-            5. Convert path cells to meter waypoints
-            6. Optional: simplify path (remove redundant waypoints)
-            
-        Logs:
-            [ASTAR] Planning from (x1,y1) to (x2,y2)
-            [ASTAR] Path found: 15 waypoints, length: 4.3m
-            [ASTAR] No path exists
-        """
-        pass
-    
-    def _heuristic(self, cell1, cell2):
-        """
-        Calculate heuristic cost between two grid cells.
+        # Initialize
+        open_set = []
+        heapq.heappush(open_set, (0, start_cell))
         
-        Args:
-            cell1: (row, col)
-            cell2: (row, col)
+        came_from = {}
+        g_score = {start_cell: 0}
+        f_score = {start_cell: self._heuristic(start_cell, goal_cell)}
+        
+        closed_set = set()
+        
+        while open_set:
+            current = heapq.heappop(open_set)[1]
             
-        Returns:
-            float: estimated cost
-        """
-        if self.heuristic_name == 'euclidean':
-            return np.sqrt((cell1[0]-cell2[0])**2 + (cell1[1]-cell2[1])**2)
-        elif self.heuristic_name == 'manhattan':
-            return abs(cell1[0]-cell2[0]) + abs(cell1[1]-cell2[1])
-        elif self.heuristic_name == 'diagonal':
-            dx = abs(cell1[0]-cell2[0])
-            dy = abs(cell1[1]-cell2[1])
-            return max(dx, dy) + 0.414 * min(dx, dy)  # D + D2*min
+            if current == goal_cell:
+                path_cells = self._reconstruct_path(came_from, current)
+                simplified = self._simplify_path(path_cells)
+                return [self.grid.grid_to_world(r, c) for r, c in simplified]
+            
+            closed_set.add(current)
+            
+            for neighbor, cost in self._get_neighbors(current):
+                if neighbor in closed_set:
+                    continue
+                    
+                tentative_g = g_score[current] + cost
+                
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    f = tentative_g + self._heuristic(neighbor, goal_cell)
+                    f_score[neighbor] = f
+                    heapq.heappush(open_set, (f, neighbor))
+                    
+        return None
         
     def _get_neighbors(self, cell):
-        """
-        Get valid neighbor cells (8-connected).
+        """Get valid neighbor cells (8-connected)."""
+        row, col = cell
+        neighbors = []
         
-        Args:
-            cell: (row, col)
-            
-        Returns:
-            List of (row, col, cost) tuples
-            
-        Cost is higher for diagonal moves (√2 vs 1).
-        """
-        pass
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                    
+                r, c = row + dr, col + dc
+                
+                # Check validity
+                if self.grid._is_valid_cell(r, c):
+                    # Check occupancy directly on grid array (0=free, 1=occupied)
+                    # Threshold 0.5
+                    if self.grid.grid[r, c] < 0.5:
+                        cost = 1.414 if (dr != 0 and dc != 0) else 1.0
+                        neighbors.append(((r, c), cost))
+                        
+        return neighbors
     
     def _reconstruct_path(self, came_from, current):
-        """
-        Reconstruct path from goal to start.
-        
-        Args:
-            came_from: dict mapping cell -> parent cell
-            current: goal cell
-            
-        Returns:
-            List of cells from start to goal
-        """
-        pass
+        """Reconstruct path from goal to start."""
+        total_path = [current]
+        while current in came_from:
+            current = came_from[current]
+            total_path.append(current)
+        return total_path[::-1] # Reverse
     
     def _simplify_path(self, path_cells):
-        """
-        Remove redundant waypoints using Douglas-Peucker or similar.
-        
-        Args:
-            path_cells: List of (row, col)
+        """Simple path smoothing (skip minimal steps)."""
+        if len(path_cells) <= 2:
+            return path_cells
             
-        Returns:
-            Simplified list of (row, col)
-        """
-        pass
+        simplified = [path_cells[0]]
+        for i in range(1, len(path_cells)-1):
+            # Keep every Nth point or check Line of Sight (expensive)
+            # For now, just return all points to be safe for trajectory follower
+            simplified.append(path_cells[i])
+            
+        simplified.append(path_cells[-1])
+        return simplified

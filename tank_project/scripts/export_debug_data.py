@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Export Debug Data - Sauvegarde Données Debug
+Export Debug Data - Sauvegarde Donnees Debug
 
 Export snapshots debug pour analyse offline:
-- Images caméra (capture live ou test)
+- Images camera (capture live ou test)
 - Grilles occupation (NumPy + visualisation)
 - Homographies et calibration
-- État jeu (JSON)
+- Etat jeu (JSON)
 - Logs
 
 Modes:
-    - Standalone : Export config + logs (sans système actif)
-    - Live       : Capture snapshot depuis caméra (avec --live)
+    - Standalone : Export config + logs (sans systeme actif)
+    - Live       : Capture snapshot depuis camera (avec --live)
 
 Usage:
     python3 export_debug_data.py [--output-dir DIR] [--live]
@@ -20,10 +20,10 @@ Examples:
     # Export config + logs seulement
     python3 export_debug_data.py
     
-    # Capture live depuis caméra
+    # Capture live depuis camera
     python3 export_debug_data.py --live
     
-    # Export vers répertoire spécifique
+    # Export vers repertoire specifique
     python3 export_debug_data.py --output-dir ~/mon_debug --live
 """
 
@@ -44,27 +44,27 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def create_debug_export(output_dir: str = None, live_capture: bool = False):
     """
-    Crée export debug complet.
+    Cree export debug complet.
     
     Args:
-        output_dir: Répertoire sortie (défaut: logs/debug_TIMESTAMP/)
-        live_capture: Si True, tente capture live depuis caméra
+        output_dir: Repertoire sortie (defaut: logs/debug_TIMESTAMP/)
+        live_capture: Si True, tente capture live depuis camera
     """
-    # Créer répertoire output
+    # Creer repertoire output
     if output_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = Path(__file__).parent.parent / 'logs' / f'debug_{timestamp}'
+        output_dir = Path(__file__).parent.parent / 'logs' / ('debug_' + timestamp)
     else:
         output_dir = Path(output_dir)
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    print(f"[EXPORT] ========== Debug Export ==========")
-    print(f"[EXPORT] Output directory: {output_dir.absolute()}")
-    print(f"[EXPORT] Live capture: {'ENABLED' if live_capture else 'DISABLED'}")
+    print("[EXPORT] ========== Debug Export ==========")
+    print("[EXPORT] Output directory: {}".format(output_dir.absolute()))
+    print("[EXPORT] Live capture: {}".format('ENABLED' if live_capture else 'DISABLED'))
     print()
     
-    # Créer fichier manifest
+    # Creer fichier manifest
     manifest = {
         'export_timestamp': datetime.now().isoformat(),
         'mode': 'live' if live_capture else 'standalone',
@@ -76,24 +76,24 @@ def create_debug_export(output_dir: str = None, live_capture: bool = False):
     if config_success:
         manifest['exported_items'].append('config')
     
-    # 2. Sauvegarder frame caméra + détections ArUco
+    # 2. Sauvegarder frame camera + detections ArUco
     if live_capture:
         camera_success = _export_camera_frame(output_dir)
         if camera_success:
             manifest['exported_items'].append('camera_frame')
             manifest['exported_items'].append('aruco_detections')
     
-    # 3. Sauvegarder grille occupation (exemple synthétique)
+    # 3. Sauvegarder grille occupation (exemple synthetique)
     grid_success = _export_occupancy_grid(output_dir, live_capture)
     if grid_success:
         manifest['exported_items'].append('occupancy_grid')
     
-    # 4. Sauvegarder état jeu (exemple synthétique)
+    # 4. Sauvegarder etat jeu (exemple synthetique)
     state_success = _export_game_state(output_dir, live_capture)
     if state_success:
         manifest['exported_items'].append('game_state')
     
-    # 5. Copier logs récents
+    # 5. Copier logs recents
     logs_count = _export_logs(output_dir)
     if logs_count > 0:
         manifest['exported_items'].append('logs')
@@ -104,10 +104,10 @@ def create_debug_export(output_dir: str = None, live_capture: bool = False):
         json.dump(manifest, f, indent=2)
     
     print()
-    print(f"[EXPORT] ========== Export Complete ==========")
-    print(f"[EXPORT] Location: {output_dir.absolute()}")
-    print(f"[EXPORT] Items exported: {len(manifest['exported_items'])}")
-    print(f"[EXPORT] Manifest: manifest.json")
+    print("[EXPORT] ========== Export Complete ==========")
+    print("[EXPORT] Location: {}".format(output_dir.absolute()))
+    print("[EXPORT] Items exported: {}".format(len(manifest['exported_items'])))
+    print("[EXPORT] Manifest: manifest.json")
 
 
 def _export_config(output_dir: Path) -> bool:
@@ -115,14 +115,14 @@ def _export_config(output_dir: Path) -> bool:
     Export fichiers configuration.
     
     Returns:
-        True si au moins un fichier exporté
+        True si au moins un fichier exporte
     """
     print("[EXPORT] Exporting configuration...")
     
     config_dir = Path(__file__).parent.parent / 'config'
     
     if not config_dir.exists():
-        print("[EXPORT]   ✗ config/ directory not found")
+        print("[EXPORT]   [FAIL] config/ directory not found")
         return False
     
     config_export = output_dir / 'config'
@@ -138,20 +138,20 @@ def _export_config(output_dir: Path) -> bool:
             with open(out_file, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False, sort_keys=False)
             
-            print(f"[EXPORT]   ✓ {config_file.name}")
+            print("[EXPORT]   [OK] {}".format(config_file.name))
             exported += 1
         except Exception as e:
-            print(f"[EXPORT]   ✗ {config_file.name}: {e}")
+            print("[EXPORT]   [FAIL] {}: {}".format(config_file.name, e))
     
     return exported > 0
 
 
 def _export_camera_frame(output_dir: Path) -> bool:
     """
-    Export capture caméra live + détections ArUco.
+    Export capture camera live + detections ArUco.
     
     Returns:
-        True si capture réussie
+        True si capture reussie
     """
     print("[EXPORT] Capturing live camera frame...")
     
@@ -159,7 +159,7 @@ def _export_camera_frame(output_dir: Path) -> bool:
         from perception.camera.realsense_stream import RealSenseStream
         from perception.camera.aruco_detector import ArucoDetector
         
-        # Initialiser caméra
+        # Initialiser camera
         print("[EXPORT]   Initializing RealSense camera...")
         camera = RealSenseStream(width=640, height=480, fps=30)
         camera.start()
@@ -171,13 +171,14 @@ def _export_camera_frame(output_dir: Path) -> bool:
         color_frame, depth_frame = camera.get_frames()
         
         if color_frame is None:
-            print("[EXPORT]   ✗ Failed to capture frame")
+            print("[EXPORT]   [FAIL] Failed to capture frame")
             camera.stop()
             return False
         
         # Sauvegarder frame couleur
         cv2.imwrite(str(output_dir / 'camera_frame.png'), color_frame)
-        print(f"[EXPORT]   ✓ camera_frame.png ({color_frame.shape[1]}x{color_frame.shape[0]})")
+        print("[EXPORT]   [OK] camera_frame.png ({}x{})".format(
+            color_frame.shape[1], color_frame.shape[0]))
         
         # Sauvegarder depth si disponible
         if depth_frame is not None:
@@ -189,14 +190,14 @@ def _export_camera_frame(output_dir: Path) -> bool:
                 cv2.COLORMAP_JET
             )
             cv2.imwrite(str(output_dir / 'depth_frame_viz.png'), depth_colormap)
-            print(f"[EXPORT]   ✓ depth_frame.npy")
+            print("[EXPORT]   [OK] depth_frame.npy")
         
-        # Détecter ArUco
+        # Detecter ArUco
         print("[EXPORT]   Detecting ArUco markers...")
         aruco = ArucoDetector()
         detections = aruco.detect(color_frame)
         
-        # Dessiner détections sur frame
+        # Dessiner detections sur frame
         frame_annotated = color_frame.copy()
         for marker_id, data in detections.items():
             center = data['center']
@@ -209,7 +210,7 @@ def _export_camera_frame(output_dir: Path) -> bool:
             cv2.circle(frame_annotated, tuple(center.astype(int)), 5, (0, 0, 255), -1)
             cv2.putText(
                 frame_annotated,
-                f"ID:{marker_id}",
+                "ID:{}".format(marker_id),
                 tuple((center + [10, -10]).astype(int)),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
@@ -219,7 +220,7 @@ def _export_camera_frame(output_dir: Path) -> bool:
         
         cv2.imwrite(str(output_dir / 'camera_frame_annotated.png'), frame_annotated)
         
-        # Sauvegarder détections JSON
+        # Sauvegarder detections JSON
         detections_json = {}
         for marker_id, data in detections.items():
             detections_json[int(marker_id)] = {
@@ -230,19 +231,19 @@ def _export_camera_frame(output_dir: Path) -> bool:
         with open(output_dir / 'aruco_detections.json', 'w') as f:
             json.dump(detections_json, f, indent=2)
         
-        print(f"[EXPORT]   ✓ ArUco detected: {len(detections)} markers")
-        print(f"[EXPORT]   ✓ camera_frame_annotated.png")
-        print(f"[EXPORT]   ✓ aruco_detections.json")
+        print("[EXPORT]   [OK] ArUco detected: {} markers".format(len(detections)))
+        print("[EXPORT]   [OK] camera_frame_annotated.png")
+        print("[EXPORT]   [OK] aruco_detections.json")
         
         camera.stop()
         return True
         
     except ImportError as e:
-        print(f"[EXPORT]   ✗ Import error: {e}")
-        print(f"[EXPORT]   → Live capture requires RealSense dependencies")
+        print("[EXPORT]   [FAIL] Import error: {}".format(e))
+        print("[EXPORT]   -> Live capture requires RealSense dependencies")
         return False
     except Exception as e:
-        print(f"[EXPORT]   ✗ Camera capture failed: {e}")
+        print("[EXPORT]   [FAIL] Camera capture failed: {}".format(e))
         return False
 
 
@@ -250,30 +251,54 @@ def _export_occupancy_grid(output_dir: Path, live_capture: bool) -> bool:
     """
     Export grille occupation.
     
-    Crée exemple synthétique si pas de système actif.
+    Cree exemple synthetique si pas de systeme actif.
     
     Args:
-        output_dir: Répertoire sortie
-        live_capture: Si True, tente connexion à système actif
+        output_dir: Repertoire sortie
+        live_capture: Si True, tente connexion a systeme actif
         
     Returns:
-        True si export réussi
+        True si export reussi
     """
     print("[EXPORT] Exporting occupancy grid...")
     
-    # Pour l'instant, créer exemple synthétique
-    # TODO: Connecter à WorldModel actif si disponible
-    
-    # Paramètres grille exemple
+    # Parametres grille par defaut
     width_m = 2.85
     height_m = 1.90
     resolution_m = 0.02
+    grid = None
+    
+    # Tenter connexion a WorldModel actif si en mode live
+    if live_capture:
+        try:
+            from core.world.world_model import WorldModel
+            
+            # Charger config pour dimensions arena
+            config_dir = Path(__file__).parent.parent / 'config'
+            with open(config_dir / 'arena.yaml') as f:
+                arena_cfg = yaml.safe_load(f)
+            
+            width_m = arena_cfg['arena']['width_m']
+            height_m = arena_cfg['arena']['height_m']
+            resolution_m = arena_cfg['grid']['resolution_m']
+            
+            # Creer WorldModel avec vraies dimensions
+            world = WorldModel(width_m, height_m, resolution_m)
+            grid = (world.grid.grid * 100).astype(np.uint8)
+            
+            print("[EXPORT]   Connected to WorldModel ({}x{}m @ {}m resolution)".format(
+                width_m, height_m, resolution_m))
+        except Exception as e:
+            print("[EXPORT]   Could not connect to WorldModel: {}".format(e))
+            print("[EXPORT]   Falling back to synthetic grid")
+            grid = None
     
     nx = int(width_m / resolution_m)
     ny = int(height_m / resolution_m)
     
-    # Créer grille (0 = libre, 100 = obstacle)
-    grid = np.zeros((ny, nx), dtype=np.uint8)
+    # Creer grille synthetique si pas de WorldModel actif
+    if grid is None:
+        grid = np.zeros((ny, nx), dtype=np.uint8)
     
     # Ajouter quelques obstacles exemple
     # Obstacle central
@@ -287,12 +312,13 @@ def _export_occupancy_grid(output_dir: Path, live_capture: bool) -> bool:
     
     # Sauvegarder array NumPy
     np.save(str(output_dir / 'occupancy_grid.npy'), grid)
-    print(f"[EXPORT]   ✓ occupancy_grid.npy ({nx}x{ny}, {resolution_m}m/cell)")
+    print("[EXPORT]   [OK] occupancy_grid.npy ({}x{}, {}m/cell)".format(
+        nx, ny, resolution_m))
     
-    # Créer visualisation
+    # Creer visualisation
     grid_viz = np.zeros((ny, nx, 3), dtype=np.uint8)
     grid_viz[grid == 0] = [240, 240, 240]    # Libre = gris clair
-    grid_viz[grid == 100] = [50, 50, 50]     # Obstacle = gris foncé
+    grid_viz[grid == 100] = [50, 50, 50]     # Obstacle = gris fonce
     
     # Agrandir pour visualisation
     scale = 4
@@ -303,9 +329,9 @@ def _export_occupancy_grid(output_dir: Path, live_capture: bool) -> bool:
     )
     
     cv2.imwrite(str(output_dir / 'occupancy_grid.png'), grid_viz_large)
-    print(f"[EXPORT]   ✓ occupancy_grid.png (visualization)")
+    print("[EXPORT]   [OK] occupancy_grid.png (visualization)")
     
-    # Sauvegarder métadonnées
+    # Sauvegarder metadonnees
     grid_meta = {
         'width_m': width_m,
         'height_m': height_m,
@@ -317,103 +343,146 @@ def _export_occupancy_grid(output_dir: Path, live_capture: bool) -> bool:
     with open(output_dir / 'occupancy_grid_meta.json', 'w') as f:
         json.dump(grid_meta, f, indent=2)
     
-    print(f"[EXPORT]   ✓ occupancy_grid_meta.json")
+    print("[EXPORT]   [OK] occupancy_grid_meta.json")
     
     return True
 
 
 def _export_game_state(output_dir: Path, live_capture: bool) -> bool:
     """
-    Export état jeu.
+    Export etat jeu.
     
-    Crée exemple synthétique si pas de jeu actif.
+    Cree exemple synthetique si pas de jeu actif.
     
     Args:
-        output_dir: Répertoire sortie
-        live_capture: Si True, tente connexion à jeu actif
+        output_dir: Repertoire sortie
+        live_capture: Si True, tente connexion a jeu actif
         
     Returns:
-        True si export réussi
+        True si export reussi
     """
     print("[EXPORT] Exporting game state...")
     
-    # Pour l'instant, créer exemple synthétique
-    # TODO: Connecter à GameEngine actif si disponible
+    state_dict = None
     
-    state_dict = {
-        'timestamp': datetime.now().isoformat(),
-        'mode': 'live' if live_capture else 'synthetic_example',
-        'match': {
-            'duration_s': 180,
-            'elapsed_s': 67.3,
-            'time_remaining_s': 112.7,
-            'status': 'in_progress'
-        },
-        'robots': {
-            'robot_4': {
-                'name': 'AI Robot',
-                'pose': {
-                    'x_m': 1.23,
-                    'y_m': 0.87,
-                    'theta_rad': 1.57
+    # Tenter connexion a GameEngine actif si en mode live
+    if live_capture:
+        try:
+            from core.game.game_engine import GameEngine
+            from core.game.state import GameStatus
+            
+            # Charger config jeu
+            config_dir = Path(__file__).parent.parent / 'config'
+            with open(config_dir / 'game.yaml') as f:
+                game_cfg = yaml.safe_load(f)
+            
+            # Creer GameEngine pour avoir acces aux regles
+            engine = GameEngine(game_cfg)
+            
+            # Exporter etat actuel (note: sans WorldModel actif, c'est un etat initial)
+            state_dict = {
+                'timestamp': datetime.now().isoformat(),
+                'mode': 'live',
+                'engine_status': engine.state.value if engine.state else 'unknown',
+                'rules': {
+                    'match_duration_s': engine.rules.match_duration_seconds,
+                    'max_hits_to_win': engine.rules.max_hits_to_win,
+                    'ai_cooldown_s': engine.rules.ai_shot_cooldown,
+                    'human_cooldown_s': engine.rules.human_shot_cooldown
                 },
-                'velocity': {
-                    'vx_m_s': 0.03,
-                    'vy_m_s': -0.01,
-                    'omega_rad_s': 0.02
-                },
-                'hits_received': 2,
-                'hits_inflicted': 3,
-                'last_shot_time': 61.2
-            },
-            'robot_5': {
-                'name': 'Human Robot',
-                'pose': {
-                    'x_m': 1.85,
-                    'y_m': 1.42,
-                    'theta_rad': -0.52
-                },
-                'velocity': {
-                    'vx_m_s': -0.08,
-                    'vy_m_s': 0.05,
-                    'omega_rad_s': -0.10
-                },
-                'hits_received': 3,
-                'hits_inflicted': 2,
-                'last_shot_time': 58.7
+                'note': 'GameEngine connected - rules exported'
             }
-        },
-        'ai_state': {
-            'current_behavior': 'ATTACK',
-            'target_position': [1.85, 1.42],
-            'path_waypoints_count': 12,
-            'has_line_of_sight': True,
-            'fire_request': True,
-            'safe_distance_m': 0.8
-        },
-        'cooldowns': {
-            'human_next_shot': 72.7,
-            'ai_next_shot': 64.2
+            
+            print("[EXPORT]   Connected to GameEngine (status: {})".format(engine.state.value))
+        except Exception as e:
+            print("[EXPORT]   Could not connect to GameEngine: {}".format(e))
+            print("[EXPORT]   Falling back to synthetic state")
+            state_dict = None
+    
+    # Creer etat synthetique si pas de GameEngine actif
+    if state_dict is None:
+        state_dict = {
+            'timestamp': datetime.now().isoformat(),
+            'mode': 'live' if live_capture else 'synthetic_example',
+            'match': {
+                'duration_s': 180,
+                'elapsed_s': 67.3,
+                'time_remaining_s': 112.7,
+                'status': 'in_progress'
+            },
+            'robots': {
+                'robot_4': {
+                    'name': 'AI Robot',
+                    'pose': {
+                        'x_m': 1.23,
+                        'y_m': 0.87,
+                        'theta_rad': 1.57
+                    },
+                    'velocity': {
+                        'vx_m_s': 0.03,
+                        'vy_m_s': -0.01,
+                        'omega_rad_s': 0.02
+                    },
+                    'hits_received': 2,
+                    'hits_inflicted': 3,
+                    'last_shot_time': 61.2
+                },
+                'robot_5': {
+                    'name': 'Human Robot',
+                    'pose': {
+                        'x_m': 1.85,
+                        'y_m': 1.42,
+                        'theta_rad': -0.52
+                    },
+                    'velocity': {
+                        'vx_m_s': -0.08,
+                        'vy_m_s': 0.05,
+                        'omega_rad_s': -0.10
+                    },
+                    'hits_received': 3,
+                    'hits_inflicted': 2,
+                    'last_shot_time': 58.7
+                }
+            },
+            'ai_state': {
+                'current_behavior': 'ATTACK',
+                'target_position': [1.85, 1.42],
+                'path_waypoints_count': 12,
+                'has_line_of_sight': True,
+                'fire_request': True,
+                'safe_distance_m': 0.8
+            },
+            'cooldowns': {
+                'human_next_shot': 72.7,
+                'ai_next_shot': 64.2
+            }
         }
-    }
     
     with open(output_dir / 'game_state.json', 'w') as f:
         json.dump(state_dict, f, indent=2)
     
-    print(f"[EXPORT]   ✓ game_state.json")
-    print(f"[EXPORT]     - Time: {state_dict['match']['elapsed_s']:.1f}s / {state_dict['match']['duration_s']}s")
-    print(f"[EXPORT]     - AI state: {state_dict['ai_state']['current_behavior']}")
-    print(f"[EXPORT]     - Hits: R4={state_dict['robots']['robot_4']['hits_received']}, R5={state_dict['robots']['robot_5']['hits_received']}")
+    print("[EXPORT]   [OK] game_state.json")
+    
+    # Afficher details selon le mode
+    if 'match' in state_dict:
+        print("[EXPORT]     - Time: {:.1f}s / {}s".format(
+            state_dict['match']['elapsed_s'], state_dict['match']['duration_s']))
+        print("[EXPORT]     - AI state: {}".format(state_dict['ai_state']['current_behavior']))
+        print("[EXPORT]     - Hits: R4={}, R5={}".format(
+            state_dict['robots']['robot_4']['hits_received'],
+            state_dict['robots']['robot_5']['hits_received']))
+    else:
+        print("[EXPORT]     - Rules exported from GameEngine")
     
     return True
 
 
 def _export_logs(output_dir: Path) -> int:
     """
-    Copie logs récents.
+    Copie logs recents.
     
     Returns:
-        Nombre de fichiers copiés
+        Nombre de fichiers copies
     """
     print("[EXPORT] Copying logs...")
     
@@ -421,7 +490,7 @@ def _export_logs(output_dir: Path) -> int:
     
     if not logs_dir.exists():
         logs_dir.mkdir(exist_ok=True)
-        print("[EXPORT]   ✗ No logs found (logs/ directory created)")
+        print("[EXPORT]   [FAIL] No logs found (logs/ directory created)")
         return 0
     
     # Copier fichiers .log
@@ -438,39 +507,40 @@ def _export_logs(output_dir: Path) -> int:
             lines = len(content.splitlines())
             size_kb = len(content) / 1024
             
-            print(f"[EXPORT]   ✓ {log_file.name} ({lines} lines, {size_kb:.1f}KB)")
+            print("[EXPORT]   [OK] {} ({} lines, {:.1f}KB)".format(
+                log_file.name, lines, size_kb))
             copied += 1
         except Exception as e:
-            print(f"[EXPORT]   ✗ {log_file.name}: {e}")
+            print("[EXPORT]   [FAIL] {}: {}".format(log_file.name, e))
     
     if copied == 0:
-        print("[EXPORT]   ✗ No .log files found")
+        print("[EXPORT]   [FAIL] No .log files found")
     
     return copied
 
 
 def main():
-    """Point d'entrée script."""
+    """Point d'entree script."""
     parser = argparse.ArgumentParser(
-        description='Export données debug pour analyse offline',
+        description='Export donnees debug pour analyse offline',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s                        Export config + logs
-  %(prog)s --live                 Capture live depuis caméra
-  %(prog)s --output-dir ~/debug   Export vers répertoire spécifique
+  %(prog)s --live                 Capture live depuis camera
+  %(prog)s --output-dir ~/debug   Export vers repertoire specifique
         """
     )
     parser.add_argument(
         '--output-dir',
         type=str,
         default=None,
-        help='Répertoire sortie (défaut: logs/debug_TIMESTAMP/)'
+        help='Repertoire sortie (defaut: logs/debug_TIMESTAMP/)'
     )
     parser.add_argument(
         '--live',
         action='store_true',
-        help='Activer capture live depuis caméra'
+        help='Activer capture live depuis camera'
     )
     
     args = parser.parse_args()

@@ -15,6 +15,9 @@ Logs: [CALIB] prefix for all steps
 import cv2
 import numpy as np
 import yaml
+import time
+import select
+import sys
 from typing import Tuple, List
 from ..camera.aruco_detector import ArucoDetector
 from core.world.coordinate_frames import TransformManager
@@ -28,8 +31,7 @@ class CalibrationWizard:
     Produces H_C2W transform and arena parameters.
     """
     
-    def __init__(self, camera, projector_width=1920, projector_height=1080,
-                 fullscreen=True, display_index=0):
+    def __init__(self, camera, projector_width=1024, projector_height=768):
         """
         Initialize calibration wizard.
         
@@ -37,14 +39,10 @@ class CalibrationWizard:
             camera: RealSenseStream instance
             projector_width: Projector resolution width
             projector_height: Projector resolution height
-            fullscreen: If True, display in fullscreen mode
-            display_index: 0 = primary monitor, 1 = secondary (projector)
         """
         self.camera = camera
         self.proj_w = projector_width
         self.proj_h = projector_height
-        self.fullscreen = fullscreen
-        self.display_index = display_index
         
         self.aruco = ArucoDetector()
         self.transform_mgr = TransformManager()
@@ -53,9 +51,7 @@ class CalibrationWizard:
         self.projector = ProjectorDisplay(
             width=projector_width,
             height=projector_height,
-            margin=50,
-            fullscreen=fullscreen,
-            display_index=display_index
+            margin=50
         )
         
         # Calibration results
@@ -64,6 +60,44 @@ class CalibrationWizard:
         self.arena_height_m = None
         self.H_C2W = None
         self.static_obstacles = []
+    
+    def _wait_for_enter_key(self, message: str = "Press ENTER when ready..."):
+        """
+        Wait for ENTER key while keeping Pygame window responsive.
+        
+        This prevents the "not responding" error by continuously
+        processing Pygame events while waiting for keyboard input.
+        
+        Args:
+            message: Message to display to user
+        """
+        print(message, end='', flush=True)
+        
+        # Keep processing Pygame events until ENTER is pressed
+        waiting = True
+        while waiting:
+            # Process Pygame events to keep window responsive
+            self.projector.handle_events()
+            
+            # Check if ENTER was pressed (non-blocking)
+            if sys.platform != 'win32':
+                # Unix/Linux: Use select for non-blocking input check
+                i, o, e = select.select([sys.stdin], [], [], 0.01)
+                if i:
+                    line = sys.stdin.readline()
+                    waiting = False
+                    print()  # New line after input
+            else:
+                # Windows: Use msvcrt (fallback to blocking input)
+                import msvcrt
+                if msvcrt.kbhit():
+                    key = msvcrt.getch()
+                    if key == b'\r':  # ENTER key
+                        waiting = False
+                        print()  # New line after input
+            
+            # Small sleep to prevent CPU spinning
+            time.sleep(0.01)
         
     def run(self) -> dict:
         """
@@ -135,13 +169,13 @@ class CalibrationWizard:
             [CALIB] MARGIN set to X px
             [CALIB] Arena rect in projector: (x1,y1) -> (x2,y2)
         """
-        print(f"[CALIB] MARGIN set to {self.margin_px} px")
+        print("[CALIB] MARGIN set to {} px".format(self.margin_px))
         
         x1, y1 = self.margin_px, self.margin_px
         x2 = self.proj_w - self.margin_px
         y2 = self.proj_h - self.margin_px
         
-        print(f"[CALIB] Arena rect in projector: ({x1},{y1}) -> ({x2},{y2})")
+        print("[CALIB] Arena rect in projector: ({},{}) -> ({},{})".format(x1, y1, x2, y2))
         
     def _step_geometric_calibration(self) -> np.ndarray:
         """
@@ -163,7 +197,7 @@ class CalibrationWizard:
         print("[CALIB] ArUco markers displayed on projector")
         print("[CALIB] Verify that camera can see all 4 markers, then press ENTER...")
         
-        input("Press ENTER when ready...")
+        self._wait_for_enter_key("Press ENTER when ready...")
         
         # Capture frame
         color, _ = self.camera.get_frames()
@@ -176,11 +210,11 @@ class CalibrationWizard:
         detected_corners = {k: v for k, v in detections.items() if k in corner_ids}
         
         if len(detected_corners) != 4:
-            print(f"[CALIB] ERROR: Expected 4 corners, found {len(detected_corners)}")
-            print(f"[CALIB] Detected IDs: {list(detected_corners.keys())}")
+            print("[CALIB] ERROR: Expected 4 corners, found {}".format(len(detected_corners)))
+            print("[CALIB] Detected IDs: {}".format(list(detected_corners.keys())))
             raise ValueError("Missing projected corners")
         
-        print(f"[CALIB] Detected 4 projected corners")
+        print("[CALIB] Detected 4 projected corners")
         
         # Build correspondences
         src_points = []
@@ -225,11 +259,12 @@ class CalibrationWizard:
             [CALIB] Scale: Z m / AV_unit
         """
         print("[CALIB] Step 3/4: Metric calibration (place physical marker in arena)")
-        marker_size_real = float(input("Enter physical marker size in meters (e.g. 0.10): "))
+        print("Enter physical marker size in meters (e.g. 0.10): ", end='', flush=True)
+        marker_size_real = float(input())
         
-        print(f"[CALIB] Real marker size: {marker_size_real} m")
+        print("[CALIB] Real marker size: {} m".format(marker_size_real))
         
-        input("Press ENTER when marker is placed...")
+        self._wait_for_enter_key("Press ENTER when marker is placed...")
         
         # Capture frame
         color, _ = self.camera.get_frames()
@@ -251,12 +286,12 @@ class CalibrationWizard:
         corners = marker_data['corners']
         size_av = self.aruco.estimate_marker_size_av(corners, H_C2AV)
         
-        print(f"[CALIB] Marker size in AV: {size_av:.3f} units")
+        print("[CALIB] Marker size in AV: {:.3f} units".format(size_av))
         
         # Compute scale
         scale = marker_size_real / size_av
         
-        print(f"[CALIB] Scale: {scale:.3f} m / AV_unit")
+        print("[CALIB] Scale: {:.3f} m / AV_unit".format(scale))
         
         # Build H_C2W
         self.transform_mgr.set_camera_to_av(
@@ -271,8 +306,8 @@ class CalibrationWizard:
         self.arena_width_m = 1.0 * scale
         self.arena_height_m = 1.0 * scale
         
-        print(f"[CALIB] H_C2W computed")
-        print(f"[CALIB] Calibration OK")
+        print("[CALIB] H_C2W computed")
+        print("[CALIB] Calibration OK")
         
         return scale
     
@@ -295,12 +330,12 @@ class CalibrationWizard:
         
         print("[CALIB] Place obstacles in arena, then press ENTER...")
         
-        input()
+        self._wait_for_enter_key()
         
         # Simplified: return empty for now
         # Full implementation would do thresholding and contour detection
         
-        print(f"[CALIB] Arena size estimated: {self.arena_width_m:.2f}m x {self.arena_height_m:.2f}m")
+        print("[CALIB] Arena size estimated: {:.2f}m x {:.2f}m".format(self.arena_width_m, self.arena_height_m))
         print("[CALIB] Static obstacles mapped")
         
         return []

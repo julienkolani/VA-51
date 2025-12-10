@@ -60,7 +60,7 @@ class ScaleEstimator:
         """
         scale = self.estimate_from_corners(corners_av)
         self.samples.append(scale)
-        print(f"[SCALE_EST] Sample {len(self.samples)}: scale={scale:.4f} m/unit")
+        print("[SCALE_EST] Sample {}: scale={:.4f} m/unit".format(len(self.samples), scale))
         
     def get_average_scale(self) -> float:
         """
@@ -78,8 +78,8 @@ class ScaleEstimator:
         avg = np.mean(self.samples)
         std = np.std(self.samples)
         
-        print(f"[SCALE_EST] Average scale from {len(self.samples)} samples: "
-              f"{avg:.4f} m/unit (std={std:.4f})")
+        print("[SCALE_EST] Average scale from {} samples: "
+              "{:.4f} m/unit (std={:.4f})".format(len(self.samples), avg, std))
         
         return avg
     

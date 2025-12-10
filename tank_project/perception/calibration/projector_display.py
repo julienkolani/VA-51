@@ -2,7 +2,7 @@
 Projector Display for Calibration
 
 Displays ArUco markers on projector for calibration wizard.
-Shows 4 corner markers (IDs 0-3) in fullscreen for geometric calibration.
+Shows 4 corner markers (IDs 0-3) in windowed mode for geometric calibration.
 
 Logs: [PROJ_DISPLAY] prefix
 """
@@ -20,8 +20,7 @@ class ProjectorDisplay:
     Displays ArUco markers at corners for geometric calibration.
     """
     
-    def __init__(self, width=1920, height=1080, margin=50, 
-                 fullscreen=False, display_index=1):
+    def __init__(self, width=1024, height=768, margin=50):
         """
         Initialize projector display.
         
@@ -29,19 +28,17 @@ class ProjectorDisplay:
             width: Display width in pixels
             height: Display height in pixels  
             margin: Safety margin from edges (px)
-            fullscreen: If True, open in fullscreen mode (default: False)
-            display_index: 0=primary monitor, 1=secondary (projector)
+        
+        Usage:
+            1. Window will open in normal windowed mode
+            2. Drag window to projector screen if needed
         """
         self.width = width
         self.height = height
         self.margin = margin
-        self.fullscreen = fullscreen
-        self.display_index = display_index
         
         self.screen = None
         self.running = False
-        self.is_fullscreen = fullscreen
-        self.saved_window_size = (width, height)
         
         # Arena rectangle (with margins)
         self.arena_x1 = margin
@@ -51,39 +48,24 @@ class ProjectorDisplay:
         self.arena_w = self.arena_x2 - self.arena_x1
         self.arena_h = self.arena_y2 - self.arena_y1
         
-        print(f"[PROJ_DISPLAY] Initialized: {width}x{height}, margin={margin}px")
-        print(f"[PROJ_DISPLAY] Arena zone: ({self.arena_x1},{self.arena_y1}) -> ({self.arena_x2},{self.arena_y2})")
+        print("[PROJ_DISPLAY] Initialized: {}x{}, margin={}px".format(width, height, margin))
+        print("[PROJ_DISPLAY] Arena zone: ({},{}) -> ({},{})".format(self.arena_x1, self.arena_y1, self.arena_x2, self.arena_y2))
     
     def start(self):
         """Start Pygame and create window."""
         pygame.init()
         
-        # Setup display
-        displays = pygame.display.get_desktop_sizes()
-        print(f"[PROJ_DISPLAY] Available displays: {len(displays)}")
-        
-        if self.display_index < len(displays):
-            print(f"[PROJ_DISPLAY] Using display {self.display_index}: {displays[self.display_index]}")
-        
-        # Start in windowed mode
-        if self.is_fullscreen:
-            self.screen = pygame.display.set_mode(
-                (0, 0), 
-                pygame.NOFRAME | pygame.FULLSCREEN
-            )
-            self.width, self.height = self.screen.get_size()
-        else:
-            self.screen = pygame.display.set_mode(
-                (self.width, self.height), 
-                pygame.RESIZABLE
-            )
+        # Always start in windowed mode
+        self.screen = pygame.display.set_mode(
+            (self.width, self.height), 
+            pygame.RESIZABLE
+        )
         
         pygame.display.set_caption("Tank Arena - Calibration Projection")
         self.running = True
         
-        mode = "fullscreen" if self.is_fullscreen else "windowed"
-        print(f"[PROJ_DISPLAY] Display window created ({mode} mode)")
-        print(f"[PROJ_DISPLAY] Press F11 to toggle fullscreen, ESC to exit fullscreen")
+        print("[PROJ_DISPLAY] Display window created (windowed mode: {}x{})".format(self.width, self.height))
+        print("[PROJ_DISPLAY] Drag window to projector screen if needed")
     
     def stop(self):
         """Close display."""
@@ -197,29 +179,7 @@ class ProjectorDisplay:
         
         pygame.display.flip()
     
-    def toggle_fullscreen(self):
-        """Toggle between fullscreen and windowed mode."""
-        if not self.running:
-            return
-        
-        if self.is_fullscreen:
-            # Switch to windowed mode
-            self.screen = pygame.display.set_mode(
-                self.saved_window_size, 
-                pygame.RESIZABLE
-            )
-            self.is_fullscreen = False
-            print("[PROJ_DISPLAY] Switched to windowed mode")
-        else:
-            # Switch to fullscreen mode
-            self.saved_window_size = (self.width, self.height)
-            self.screen = pygame.display.set_mode(
-                (0, 0), 
-                pygame.NOFRAME | pygame.FULLSCREEN
-            )
-            self.is_fullscreen = True
-            self.width, self.height = self.screen.get_size()
-            print(f"[PROJ_DISPLAY] Switched to fullscreen mode ({self.width}x{self.height})")
+
     
     def handle_events(self):
         """Process pygame events (call periodically to prevent freezing)."""
@@ -227,10 +187,5 @@ class ProjectorDisplay:
             if event.type == pygame.QUIT:
                 self.stop()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
-                    self.toggle_fullscreen()
-                elif event.key == pygame.K_ESCAPE:
-                    if self.is_fullscreen:
-                        self.toggle_fullscreen()
-                    else:
-                        self.stop()
+                if event.key == pygame.K_ESCAPE:
+                    self.stop()

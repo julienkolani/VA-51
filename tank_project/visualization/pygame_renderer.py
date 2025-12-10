@@ -36,7 +36,7 @@ class PygameRenderer:
     STATE_PLAYING = "playing"
     STATE_FINISHED = "finished"
     
-    def __init__(self, width: int = 1920, height: int = 1080, margin: int = 50, 
+    def __init__(self, width: int = 1024, height: int = 768, margin: int = 50, 
                  fullscreen: bool = True, display_index: int = 0):
         """
         Initialize renderer with modern gaming UI.
@@ -157,7 +157,7 @@ class PygameRenderer:
             if event.key == pygame.K_d:
                 # Toggle debug path visualization
                 self.show_debug_path = not self.show_debug_path
-                print(f"[VIS] Debug path: {'ON' if self.show_debug_path else 'OFF'}")
+                print("[VIS] Debug path: {}".format('ON' if self.show_debug_path else 'OFF'))
     
     def start_match(self, countdown_seconds: float = 3.0):
         """Start match countdown."""
@@ -323,9 +323,33 @@ class PygameRenderer:
         pygame.draw.rect(self.screen, self.TEXT_DARK, rect, 4)
     
     def _draw_obstacles(self, grid):
-        """Draw obstacles with depth effect."""
-        # TODO: Connect to actual occupancy grid
-        pass
+        """Draw obstacles from occupancy grid."""
+        if grid is None:
+            return
+            
+        # Iterate through occupied cells
+        # Note: inefficient for very large grids, optimization would be to use static surface
+        rows, cols = grid.grid.shape
+        
+        # Color for obstacles
+        obs_color = (60, 60, 70)
+        
+        for r in range(rows):
+            for c in range(cols):
+                if grid.grid[r, c] > 0.5:
+                    # Convert grid cell to world m -> screen px
+                    # Grid (r, c) -> World (x, y) center
+                    x_m, y_m = grid.grid_to_world(r, c)
+                    
+                    # Convert to screen
+                    px, py = self.world_to_screen(x_m, y_m)
+                    
+                    # Size of cell in pixels
+                    size = int(grid.resolution * self.scale) + 1  # +1 to avoid gaps
+                    
+                    # Draw rect
+                    rect = pygame.Rect(px - size//2, py - size//2, size, size)
+                    pygame.draw.rect(self.screen, obs_color, rect)
     
     def _draw_robot(self, pose: Tuple[float, float, float], color: Tuple, 
                    label: str, glow_color: Tuple):

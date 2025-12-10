@@ -51,10 +51,10 @@ class ROSBridgeClient:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
             self.connected = True
-            print(f"[ROS] Connected to bridge at {self.host}:{self.port}")
+            print("[ROS] Connected to bridge at {}:{}".format(self.host, self.port))
         except Exception as e:
             self.connected = False
-            print(f"[ROS] Connection failed: {e}")
+            print("[ROS] Connection failed: {}".format(e))
     
     def disconnect(self):
         """Close connection to ROS bridge."""
@@ -107,12 +107,12 @@ class ROSBridgeClient:
             self.socket.sendall(msg_json.encode('utf-8'))
             
             # Log
-            print(f"[ROS] Robot{robot_id} cmd: v={v:.2f} m/s, ω={omega:.2f} rad/s")
+            print("[ROS] Robot{} cmd: v={:.2f} m/s, w={:.2f} rad/s".format(robot_id, v, omega))
             
             return True
             
         except Exception as e:
-            print(f"[ROS] Send failed: {e}")
+            print("[ROS] Send failed: {}".format(e))
             self.connected = False
             return False
     
@@ -139,7 +139,7 @@ class ROSBridgeClient:
         except socket.timeout:
             pass  # No data available
         except Exception as e:
-            print(f"[ROS] Receive error: {e}")
+            print("[ROS] Receive error: {}".format(e))
             
         return None
     

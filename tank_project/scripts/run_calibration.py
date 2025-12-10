@@ -55,9 +55,7 @@ def main():
     wizard = CalibrationWizard(
         camera, 
         projector_width=arena_config['projector']['width'],
-        projector_height=arena_config['projector']['height'],
-        fullscreen=arena_config['display']['fullscreen'],
-        display_index=arena_config['display']['display_index']
+        projector_height=arena_config['projector']['height']
     )
     
     try:
@@ -68,7 +66,7 @@ def main():
         # Save to config
         config_path = Path(__file__).parent.parent / 'config' / 'arena.yaml'
         
-        print(f"[CALIB_RUNNER] Saving calibration to {config_path}")
+        print("[CALIB_RUNNER] Saving calibration to {}".format(config_path))
         
         with open(config_path, 'w') as f:
             yaml.dump(results, f, default_flow_style=False)
@@ -77,7 +75,7 @@ def main():
         print("[CALIB_RUNNER] You can now run the game with: python3 run_game.py")
         
     except Exception as e:
-        print(f"[CALIB_RUNNER] ERROR: {e}")
+        print("[CALIB_RUNNER] ERROR: {}".format(e))
         
     finally:
         camera.stop()
