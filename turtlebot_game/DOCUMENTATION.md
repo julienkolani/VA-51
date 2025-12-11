@@ -18,7 +18,7 @@ flowchart LR
     end
 
     subgraph ROBOT["TurtleBot"]
-        CMD[/cmd_vel Topic]
+        CMD["/cmd_vel Topic"]
     end
 
     TANK -->|JSON| WS
