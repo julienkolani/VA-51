@@ -57,12 +57,11 @@ def main():
         
         # Get UI configuration
         ui_cfg = all_config.get('ui', {})
-        connection_cfg = all_config.get('connection', {})
+        network_cfg = all_config.get('network', {})
         
-        # Build WebSocket URI from config
-        ws_host = connection_cfg.get('websocket', {}).get('host', 'localhost')
-        ws_port = connection_cfg.get('websocket', {}).get('port', 9090)
-        ws_uri = "ws://{}:{}".format(ws_host, ws_port)
+        # Build WebSocket URI from config (network.yaml has 'uri' directly)
+        ws_cfg = network_cfg.get('websocket', {})
+        ws_uri = ws_cfg.get('uri', 'ws://localhost:8765')
         
         # Create and launch UI
         ui = IntegratedUI(

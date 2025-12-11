@@ -1,188 +1,65 @@
-# TurtleBot Controller
+# Control TurtleBot
 
-Professional Pygame-based interface for manual control of TurtleBot robots via WebSocket.
+Interface Pygame professionnelle pour contrôle manuel du robot TurtleBot via WebSocket.
 
-## Features
-
-- **Dual Control**: Keyboard and PS3 gamepad support
-- **Real-time Monitoring**: WebSocket connection status and latency
-- **Visual Simulation**: Real-time robot trajectory visualization
-- **Professional UI**: Modern dark theme with status panels  
-- **Modular Architecture**: Clean separation of concerns (config, core, UI)
-- **Configurable**: YAML-based configuration management
-
-## Quick Start
-
-### Installation
+## Lancement
 
 ```bash
-cd /home/julien/ros2_ws/src/VA50/control_turtlebot
-pip3 install -r requirements.txt
-```
-
-### Basic Usage
-
-```bash
+cd control_turtlebot
 python3 main.py
 ```
 
-The controller will:
-1. Load configuration from `config/` directory
-2. Attempt WebSocket connection to `ws://localhost:8765`
-3. Display UI with control panels
-4. Accept keyboard or PS3 gamepad input
-5. Send velocity commands to robot via WebSocket
-
-## Controls
-
-### Keyboard
-
-| Key | Action |
-|-----|--------|
-| **Arrow Keys** / **WASD** | Move robot (forward/backward/left/right) |
-| **Space** | Emergency stop |
-| **+** / **-** | Increase/decrease speed factor |
-| **ESC** | Quit application |
-
-### PS3 Gamepad
-
-| Control | Action |
-|---------|--------|
-| **Left Stick** | Move robot (Y-axis: forward/back, X-axis: turn) |
-| **D-Pad** | Override movement |
-| **X Button** | Emergency stop |
-
-## Configuration
-
-All configuration is in YAML files under `config/`:
-
-### `config/network.yaml`
-
-WebSocket connection settings:
-
-```yaml
-websocket:
-  uri: "ws://localhost:8765"  # Change to robot IP
-  reconnect_delay_s: 2.0
-  ping_interval_s: 3.0
+Ou via le script unifié :
+```bash
+./launch_game.sh --control
 ```
 
-### `config/controls.yaml`
-
-Keyboard and gamepad parameters:
-
-```yaml
-keyboard:
-  max_linear_mps: 3.5
-  max_angular_dps: 120
-  
-ps3:
-  deadzone: 0.15
-```
-
-### `config/ui.yaml`
-
-UI appearance and behavior:
-
-```yaml
-window:
-  default_width: 1200
-  default_height: 700
-  target_fps: 60
-
-theme:
-  colors:
-    background: [15, 15, 20]
-    accent: [0, 180, 220]
-```
-
-### `config/robot.yaml`
-
-Robot physical limits:
-
-```yaml
-velocity_limits:
-  max_linear_mps: 0.22
-  max_angular_radps: 2.84
-```
-
-## Architecture
+## Structure
 
 ```
 control_turtlebot/
-├── config/              # YAML configuration files
-├── core/
-│   ├── controllers/     # Input handlers (keyboard, PS3)
-│   └── networking/      # WebSocket client
-├── ui/                  # Pygame rendering
-└── utils/               # Config loader
+├── main.py               # Point d'entrée
+├── integrated_ui.py      # Interface Pygame
+├── websocket_client.py   # Client WebSocket async
+├── keyboard_controller.py
+├── ps3_controller.py
+├── visual_robot.py
+└── config/
+    ├── network.yaml      # URI WebSocket (port 8765)
+    ├── ui.yaml           # Interface
+    └── controls.yaml     # Mapping touches
 ```
 
-### Key Components
+## Configuration Réseau
 
-- **BaseController**: Abstract base class for all controllers
-- **KeyboardController**: Physics-based keyboard control
-- **PS3Controller**: Joystick control with deadzone
-- **Theme**: Professional UI styling
-- **ConfigLoader**: YAML configuration management
-
-## Connecting to TurtleBot
-
-1. Ensure `turtlebot_game/safety_bridge` is running on the robot or bridge server
-2. Update `config/network.yaml` with correct WebSocket URI
-3. Launch controller:
-
-```bash
-python3 main.py
+```yaml
+# config/network.yaml
+websocket:
+  uri: "ws://localhost:8765"
 ```
 
-4. Check connection status in UI (top-right panel)
+## Contrôles
 
-## Troubleshooting
+### Clavier
+| Touche | Action                         |
+| ------ | ------------------------------ |
+| `W/↑`  | Avancer                        |
+| `S/↓`  | Reculer                        |
+| `A/←`  | Tourner gauche                 |
+| `D/→`  | Tourner droite                 |
+| `+/-`  | Ajuster vitesse                |
+| `M`    | Changer mode (clavier/manette) |
+| `ESC`  | Quitter                        |
 
-### No WebSocket Connection
+### Manette PS3
+- Stick gauche : Déplacement
+- L2/R2 : Vitesse
 
-- Verify `turtlebot_game/safety_bridge` is running
-- Check WebSocket URI in `config/network.yaml`
-- Test network connectivity to robot: `ping 192.168.50.1`
+## Protocole
 
-### PS3 Controller Not Detected
+Envoie au Safety Bridge :
+```json
+{"type": "cmd_vel", "linear_x": 0.2, "angular_z": 0.5}
+```
 
-- Connect gamepad before launching
-- Check gamepad with: `ls /dev/input/js*`
-- Reconnect during runtime (hot-plug supported)
-
-### High Latency
-
-- Check network quality
-- Reduce `ping_interval_s` in `config/network.yaml`
-- Move closer to robot WiFi access point
-
-## Development
-
-### Adding New Controller
-
-1. Create new class in `core/controllers/`
-2. Inherit from `BaseController`
-3. Implement required methods: `update()`, `get_command()`, `emergency_stop()`
-4. Add configuration to `config/controls.yaml`
-
-### Customizing UI
-
-Edit `config/ui.yaml` to modify:
-- Window size and FPS
-- Theme colors
-- Font sizes
-- Panel layout
-
-## Dependencies
-
-- `pygame` - UI and input handling
-- `websockets` - WebSocket client
-- `pyyaml` - Configuration loading
-
-## See Also
-
-- [VA50 Main README](../README.md) - Complete project documentation
-- [turtlebot_game](../turtlebot_game/) - ROS2 WebSocket bridge
-- [tank_project](../tank_project/) - AR tank combat game
+Voir [DOCUMENTATION.md](DOCUMENTATION.md) pour les détails.

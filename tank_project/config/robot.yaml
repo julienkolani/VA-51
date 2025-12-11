@@ -24,5 +24,5 @@ control:
 
 ros_bridge:
   host: "localhost"
-  port: 9090
+  port: 8765 # Must match safety_bridge WebSocket port
   timeout_s: 1.0

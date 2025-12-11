@@ -39,22 +39,40 @@ class ROSBridgeClient:
         self.socket = None
         self.connected = False
         
-    def connect(self):
+    def connect(self, max_retries: int = 0, retry_interval: float = 8.0):
         """
-        Establish connection to ROS bridge.
+        Establish connection to ROS bridge with optional retry logic.
+        
+        Args:
+            max_retries: Max retry attempts (0 = infinite until success)
+            retry_interval: Seconds between retries (default 8s)
         
         Logs:
             [ROS] Connected to bridge at host:port
             [ROS] Connection failed: error
         """
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.host, self.port))
-            self.connected = True
-            print("[ROS] Connected to bridge at {}:{}".format(self.host, self.port))
-        except Exception as e:
-            self.connected = False
-            print("[ROS] Connection failed: {}".format(e))
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.settimeout(5.0)  # Connection timeout
+                self.socket.connect((self.host, self.port))
+                self.socket.settimeout(None)  # Reset to blocking
+                self.connected = True
+                print("[ROS] Connected to bridge at {}:{}".format(self.host, self.port))
+                return True
+            except Exception as e:
+                self.connected = False
+                print("[ROS] Connection attempt {} failed: {}".format(attempt, e))
+                
+                if max_retries > 0 and attempt >= max_retries:
+                    print("[ROS] Max retries reached, giving up")
+                    return False
+                
+                print("[ROS] Retrying in {} seconds...".format(retry_interval))
+                import time
+                time.sleep(retry_interval)
     
     def disconnect(self):
         """Close connection to ROS bridge."""
@@ -95,10 +113,11 @@ class ROSBridgeClient:
             if not self.connected:
                 return False
         
+        # Message format matching safety_bridge.py expectations
         message = {
-            "robot_id": robot_id,
-            "linear": round(v, 3),
-            "angular": round(omega, 3),
+            "type": "cmd_vel",
+            "linear_x": round(v, 3),
+            "angular_z": round(omega, 3),
             "timestamp": time.time()
         }
         
